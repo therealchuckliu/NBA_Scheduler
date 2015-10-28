@@ -12,17 +12,17 @@
 
 \begin{document}
 	\title{CS182: NBA Scheduler}
-	\author{Abhishek Malali, Charles Liu (cliu02@g.harvard.edu), Samuel Dalton}
+	\author{Abhishek Malali, Charles Liu (cliu02@g.harvard.edu), Samuel Daulton}
 	\date{\today}
 	\maketitle
 	
 	\section{Introduction}
 	
-	The National Basketball Association is a 30 team league that plays an 82 game schedule over a 6-month period. It showcases some of the best athletes in the world and has generated globally recognized brands. As such, it is a multi-billion dollar industry and is constantly looking for ways to improve. One such way recently has been to reorganize it's schedule.
+	The National Basketball Association is a 30 team league that organizes an 82 game schedule for each team over a 6-month period. It showcases some of the best athletes in the world and has generated globally recognized brands. As such, it is a multi-billion dollar industry and is constantly looking for ways to improve. Recently, one such way has been to reorganize its schedule.
 	
 	\subsection{NBA Scheduling Formula}
 
-	Currently there are two conferences (East, West) with three divisions of five teams within each conference. The 82-game schedule is currently set up as follows:
+	Currently there are two conferences (East, West) each comprised of three divisions each of which contain five teams. The 82-game schedule is currently set up as follows:
 
 	\begin{enumerate}
 		\item 4 games against the other 4 division opponents, [4x4=16 games]
@@ -31,7 +31,7 @@
 		\item 2 games against teams in the opposing conference. [2x15=30 games]
 	\end{enumerate}
 
-	And of course, each team must play 41 home and away games. 
+	And of course, each team must play 41 home and 41 away games. 
 	
 	\subsection{Court Availability}
 
@@ -51,24 +51,28 @@
 		\item Christmas Eve
 		\item All-Star Week
 		\item NCAA Men's Division I Basketball Championship Game
-	\end{enumerate}	
+	\end{enumerate}
+
+    \subsection{Additional Assumptions}
+    
+    There are no non-NBA events in the venues that may further constrain a team's schedule.
 	
 	\section{Project Goals}
 
-	While the NBA has obviously been able to put out a schedule every year for every team, there has been recent criticism - mainly that there are too many ``back-to-back'' stretches, where teams potentially play 4 games in 5 nights, and the length of travel in a short amount of time is too taxing on the players. Our end-goal would be to address these concerns.
+	While the NBA has obviously been able to put out a schedule every year for every team, there has been recent criticism; the main criticism is there are too many ``back-to-back'' stretches, where teams potentially play 4 games in 5 nights.  Moreover, the length of travel in a short amount of time is too taxing on the players. Our end-goal would be to minimize these schedule-induced "costs" on a player's energy level.
 	
 	\subsection{Data Generation}
 	For the data - we know what the 30 teams are and will calculate the exact distance between any two team venues. Then, for a specific year we will randomly generate the court availability constraints mentioned above as well as the week of the All-Star break (this must be a week in February) and NCAA Championship Game (First Monday of April).
 
 	\subsection{Initial Schedule}
-	We will then model this problem as a CSP similar to ones we've seen in class and generate an initial solution. We will also implement some local search algorithms and test how feasible they are given the number of constraints. 
+	We will then model this problem as a CSP, similar to ones we've seen in class, and generate an initial solution. We will also implement some local search algorithms and test how feasible they are given the number of constraints. 
 
 	\subsection{More Player Friendly Schedule}
-	We will then look to address the player concerns that there are too many games in too short a time. We'll have generic variables $N$ and $M$ and add the following constraint that a team can play at most $N$ games in $M$ nights.  If time permits, we want to find the solution that would minimize the total distance traveled - this lessens the wear on players and saves flight coordination issues. This could potentially be an increasingly computationally intensive problem - so we will look to see if certain optimizations can provide a solution:
+	We will then look to address the player concerns that there are too many games in too short a time. We'll add a new constraint to model this concern: using generic variables $N$ and $M$, we would add the constraint that a team can play at most $N$ games in $M$ nights.  If time permits, we want to find the solution that would minimize the total distance traveled - this lessens the wear on players and saves flight coordination issues. This could potentially be an increasingly computationally intensive problem - so we will look to see if certain optimizations can provide a solution:
 
 	\begin{enumerate}
 		\item Some form of greedy next-best search in choosing the next game - choose the next game for a team that makes sure the $N$ games in $M$ nights constraint is met then perform arc consistency
-		\item The minimizing distance problem for a specific team is classic TSP - could try to model this problem in form of A* and find a heuristic based on number of divisional games remaining (divisional games are regionally closer) - then rearrange schedule to fit that team's path. We could try to first accomplish this but the goal is to minimize the combined distance for every team traveled which will require outside research to see if this is even feasible
+		\item The minimizing distance problem for a specific team is classic CSP - could try to model this problem in form of A* and find a heuristic based on number of divisional games remaining (divisional games are regionally closer) - then rearrange schedule to fit that team's path. We could try to first accomplish this but the goal is to minimize the combined distance for every team traveled which will require outside research to see if this is even feasible
 		\item Research online for other techniques that haven't been discussed in class - surprisingly this has been an issue well researched in the NFL but not the NBA (probably because that's a smaller problem with only 16 games), but perhaps we can gain some insights from reading papers optimizing their schedule
 	\end{enumerate}
 
