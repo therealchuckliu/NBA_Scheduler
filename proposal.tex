@@ -68,7 +68,7 @@
 
 	\begin{enumerate}
 		\item Some form of greedy next-best search in choosing the next game - choose the next game for a team that makes sure this constraint is met then perform arc consistency
-		\item Generate some heuristic based on the number of games left against divisional opponents (who would be geographically closer) to perform some kind of A* search
+		\item The minimizing distance problem is classic TSP - could try to model this problem in form of A* and find a heuristic based on number of divisional games remaining (divisional games are regionally closer)
 		\item Research online for other techniques that haven't been discussed in class - surprisingly this has been an issue well researched in the NFL but not the NBA (probably because that's a smaller problem with only 16 games), but perhaps we can gain some insights from reading papers optimizing their schedule
 	\end{enumerate}
 
@@ -84,5 +84,12 @@
 		\item Model revisited including new constraints
 		\item Find relevant research papers for NFL
 	\end{enumerate}
+
+	\section{Resources}
+	\begin{itemize}
+		\item \url{http://www.public.asu.edu/~huanliu/AI04S/project1.htm}
+		\item \url{http://www.cc.gatech.edu/~bdilkina/papers/NFLsched1.pdf}
+		\item \url{http://www.sloansportsconference.com/wp-content/uploads/2015/02/SSAC15-RP-Finalist-Alleviating-competitive-imbalance-in-NFL-schedules.pdf}
+	\end{itemize}
 	
 \end{document}
