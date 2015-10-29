@@ -9,10 +9,18 @@
 \usepackage{amsfonts}
 \hypersetup{colorlinks=true, linkcolor=blue} %make them pretty links
 \usepackage[all]{hypcap} %make them link to the right place
+\usepackage{url}
+\makeatletter
+\g@addto@macro{\UrlBreaks}{\UrlOrds}
+\makeatother
+\usepackage{geometry}
+\geometry{legalpaper, portrait, margin=1in}
 
 \begin{document}
 	\title{CS182: NBA Scheduler}
-	\author{Abhishek Malali, Charles Liu (cliu02@g.harvard.edu), Samuel Daulton}
+	\author{Abhishek Malali (abhishekmalali@g.harvard.edu)\\
+			Charles Liu (cliu02@g.harvard.edu)\\
+			Samuel Daulton (sdaulton@g.harvard.edu)}
 	\date{\today}
 	\maketitle
 	
@@ -72,7 +80,7 @@
 
 	\begin{enumerate}
 		\item Some form of greedy next-best search in choosing the next game - choose the next game for a team that makes sure the $N$ games in $M$ nights constraint is met then perform arc consistency
-		\item The minimizing distance problem for a specific team is classic traveling salesman problem - could try to model this problem in form of A* and find a heuristic based on number of divisional games remaining (divisional games are regionally closer) - then rearrange schedule to fit that team's path. We could try to first accomplish this but the goal is to minimize the combined distance for every team traveled which will require outside research to see if this is even feasible. At a minimum we will try to beat the total distance traveled from the actual NBA schedule for this year.
+		\item The minimizing distance problem for a specific team is similar to traveling salesman problem - could try to model this problem in form of A* and find a heuristic based on number of divisional games remaining (divisional games are regionally closer) - then rearrange schedule to fit that team's path. We could try to first accomplish this but the goal is to minimize the combined distance for every team traveled which will require outside research to see if this is even feasible. At a minimum we will try to beat the total distance traveled from the actual NBA schedule for this year through a greedy approach of finding minimum distance traveled while optimizing for 1 team, then minimum distance traveled for for 2 teams including the best from the 1-team, and so on until as many teams as possible have minimized their travel distance.
 		\item Research online for other techniques that haven't been discussed in class - surprisingly this has been an issue well researched in the NFL but not the NBA (probably because that's a smaller problem with only 16 games), but perhaps we can gain some insights from reading papers optimizing their schedule
 	\end{enumerate}
 
