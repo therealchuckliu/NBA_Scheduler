@@ -9,6 +9,8 @@ Logic for Divisions/NBA teams
 """
 import datetime
 import organization as org
+import random
+import conf_opponents as cf
 
 class DataGen:
     
@@ -98,6 +100,13 @@ class DataGen:
         #i.e., game_indices = all available dates for games
         self.game_indices = list(set(indices) - self.game_indices)
         
+        #set the 6 conference opponents that team will play 4 times
+        for team in self.league.teams():
+            for opp in cf.conf_opponents[team.name]:
+                opp_team = self.league.get_team(opp)
+                team.conf_opponents.add(opp_team)
+                    
+        
     def add_division(self, conference, divisions):
         for division in divisions:
             conference.divisions[division] = org.Division(division, conference)
@@ -109,6 +118,3 @@ class DataGen:
             #see comment at end of init
             for idx in division.teams[team].home_dates:
                 self.game_indices.discard(idx)
-            
-    
-        

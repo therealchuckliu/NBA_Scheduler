@@ -14,6 +14,9 @@ class OrgEq(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+        
+    def __repr__(self):
+        return type(self).__name__ + " : " + self.name
 
 #Eventually want Team class to interact with domain objects to generate schedule
 class Team(OrgEq):
@@ -27,6 +30,8 @@ class Team(OrgEq):
         #50-60 available dates to host home games
         self.home_dates = np.random.choice(indices, np.random.randint(50, 60), replace=False)
         self.home_dates.sort()
+        #these are the conference opponents that you'll play 4 games against (6 of them)
+        self.conf_opponents = set([])
 
 class Division(OrgEq):
     def __init__(self, name, conference, teams = []):
@@ -49,9 +54,16 @@ class Conference(OrgEq):
                 return division.teams[name]
         return None
         
+    def teams(self):
+        teams = []
+        for division in self.divisions.values():
+            teams += division.teams.values()
+        return teams
+        
 class League(OrgEq):
     def __init__(self, conferences = []):
         self.conferences = dict(zip(map(lambda x: x.name, conferences), conferences))
+        self.name = "NBA"
 
     def get_division(self, name):
         for conference in self.conferences.values():
@@ -65,6 +77,12 @@ class League(OrgEq):
                 if name in division.teams:
                     return division.teams[name]
         return None
+    
+    def teams(self):
+        teams = []
+        for conference in self.conferences.values():
+            teams += conference.teams()
+        return teams
         
         
 
