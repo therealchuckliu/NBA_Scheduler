@@ -45,7 +45,8 @@ class Scheduler(object):
         return output
                 
     def str_game(self, team, dom_elem):
-        return str(self.data.i2d[dom_elem[2]]) + ": " + team.state + " " + team.name + (" vs. " if dom_elem[1] else " @ ") + dom_elem[0].state + " " + dom_elem[0].name
+        opponent, home, dateindex = dom_elem
+        return "{},{},{}".format(self.data.i2d[dateindex], team.name if home else opponent.name, opponent.name if home else team.name)
 
 if __name__ == '__main__':
     sched = Scheduler(2015)
