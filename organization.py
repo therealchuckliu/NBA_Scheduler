@@ -16,7 +16,7 @@ class OrgEq(object):
         return not self.__eq__(other)
         
     def __repr__(self):
-        return type(self).__name__ + " : " + self.name
+        return self.name
 
 #Eventually want Team class to interact with domain objects to generate schedule
 class Team(OrgEq):

@@ -9,7 +9,6 @@ Logic for Divisions/NBA teams
 """
 import datetime
 import organization as org
-import random
 import conf_opponents as cf
 
 class DataGen:
