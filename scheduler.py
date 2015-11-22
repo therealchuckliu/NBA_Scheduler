@@ -25,6 +25,7 @@ class Scheduler(object):
             statesExplored += 1
             successors = state.successors()
             if successors is None:
+                print "Explored:" + str(statesExplored)
                 return state.domains
             else:
                 frontier.extend(successors)
@@ -32,15 +33,14 @@ class Scheduler(object):
         
                    
     #methods for printing schedules
-    def str_schedule(self, games = 1, teams = []):
+    def str_schedule(self, schedule, games = 82, teams = []):
         output = ""
         if type(teams) is str:
             teams = [teams]
         for t in (teams if len(teams) > 0 else self.data.league.teams()):
             team = self.data.league.get_team(t)
-            output += team.state + " " + team.name + "\n"
             for i in range(1, games + 1):
-                dom_elem = self.variables[(team, i)][0]
+                dom_elem = schedule[(team, i)][0]
                 output += self.str_game(team, dom_elem) + "\n"
         return output
                 
@@ -49,5 +49,15 @@ class Scheduler(object):
 
 if __name__ == '__main__':
     sched = Scheduler(2015)
+    today = dg.datetime.datetime.today()
     new_sched = sched.create_schedule()
+    fin = dg.datetime.datetime.today()
+    elapsed = fin - today
+    elapsed = elapsed.total_seconds()
+    print elapsed/60.
+    #output new sched to file
+    fn = str(today).split()[0]
+    f = open(fn, 'w')
+    f.write(sched.str_schedule(new_sched))
+    f.close()
     
