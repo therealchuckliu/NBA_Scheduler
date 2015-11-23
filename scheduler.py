@@ -11,8 +11,13 @@ import domain as dom
 import datagen as dg
 import json
 import sys
+import os
 
 def write_output(domains, filename):
+    try:
+        os.remove(filename)
+    except OSError:
+        pass
     with open(filename + '.json', 'w') as fp:
         json.dump(map2list(domains), fp)
 
