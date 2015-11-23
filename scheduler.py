@@ -9,27 +9,110 @@ CSP code running DFS on variables
 
 import domain as dom
 import datagen as dg
+import json
+
+def write_output(domains, filename):
+    with open(filename + '.json', 'w') as fp:
+        json.dump(domains, fp)
+
+def read_output(filename):
+    with open(filename + '.json', 'r') as fp:
+        domains = json.load(fp)
+    return domains
 
 class Scheduler(object):
     
     def __init__(self, year):
         self.data = dg.DataGen(year)
 
-    def create_schedule(self):
-        initialstate = dom.TGStates(None, self.data.league, self.data.game_indices)
-        frontier = [initialstate]
+    def create_schedule(self, matchups_json = False, venues_json = False, dates_json = False):
+        matchups = None
+        if matchups_json:
+            matchups = read_output("Matchups")
+        else:
+            initialState = dom.Matchups(None, self.data.league, self.data.game_indices)
+            matchups, matchups_statesExplored = self.DFS(initialState)
+            write_output(matchups, "Matchups")        
+            print "Matchups: {}".format(matchups_statesExplored)
+        
+        if matchups is not None:
+            #now we have our matchups which is a dict of (team, game_num) -> [opponent]
+            #we next want to assign home/away so we create a map of the form:
+            #(team1, team2, game_num) -> [True/False]
+            #where True indicates it's played at team1's venue
+            #also team1 < team2 alphabetically
+            venues = None
+            if venues_json:
+                venues = read_output("Venues")
+            else:
+                venues_domains = {}
+                for state in matchups:
+                    t, g_n = state
+                    o = matchups[state][0]
+                    v_k = (t, o, g_n) if t < o else (o, t, g_n)
+                    if v_k not in venues_domains:
+                        venues_domains[v_k] = [True, False]
+                venueState = dom.Venues(venues_domains)
+                venues, venues_statesExplored = self.DFS(venueState)
+                write_output(venues, "Venues")
+                print "Venues: {}".format(venues_statesExplored)
+            
+            if venues is not None:
+                #now we have our venues which is a dict of (team1, team2, game_num) -> [True/False]
+                #we next want to assign dates to play so we create a map of the form:
+                #(team1, team2, game_num) -> [d1, d2, d3, ...]
+                #data.game_indices has around 160 dates for 82 games, so we should minimize the
+                #domains to be roughly 2*game_num +/- window dates
+                dates = None
+                if dates_json:
+                    dates = read_output("Dates")
+                else:
+                    window = 3
+                    dates_domains = {}
+                    for state in venues:
+                        t1, t2, g_n = state
+                        window_min = max(0, 2*g_n - window)
+                        window_max = min(max(self.data.game_indices), 2*g_n + window)
+                        dates = []
+                        for d in self.data.game_indices:
+                            if d >= window_min and d <= window_max:
+                                dates.append(d)
+                        dates_domains[state] = dates
+                    dateState = dom.Dates(dates_domains)
+                    dates, dates_statesExplored = self.DFS(dateState)
+                    write_output(dates, "Dates")
+                    print "Dates: {}".format(dates_statesExplored)
+                    
+                    if dates is not None:
+                        #create a master map of everything of the form:
+                        #(team, game_num) -> (opponent, home, dateindex)
+                        #where home is true if played at team's venue
+                        sched_map = {}
+                        for state in venues:
+                            t1, t2, g_n = state
+                            home = venues[state][0]
+                            date = dates[state][0]
+                            sched_map[(t1, g_n)] = (t2, home, date)
+                            sched_map[(t2, g_n)] = (t1, not home, date)
+                        write_output(sched_map, "Schedule")
+                        return sched_map
+                    
+        return None
+        
+    def DFS(self, initialState):
+        frontier = [initialState]
         statesExplored = 0
         
         while frontier:
             state = frontier.pop()
             statesExplored += 1
+            print "{}, {}".format(statesExplored, len(frontier))
             successors = state.successors()
             if successors is None:
-                print "Explored:" + str(statesExplored)
-                return state.domains
+                return (state.domains, statesExplored)
             else:
                 frontier.extend(successors)
-        return None
+        return (None, statesExplored)
         
                    
     #methods for printing schedules
@@ -40,7 +123,7 @@ class Scheduler(object):
         for t in (teams if len(teams) > 0 else self.data.league.teams()):
             team = self.data.league.get_team(t)
             for i in range(1, games + 1):
-                dom_elem = schedule[(team, i)][0]
+                dom_elem = schedule[(team, i)]
                 output += self.str_game(team, dom_elem) + "\n"
         return output
                 
@@ -57,8 +140,3 @@ if __name__ == '__main__':
     elapsed = elapsed.total_seconds()
     print elapsed/60.
     #output new sched to file
-    fn = str(today).split()[0]
-    f = open(fn, 'w')
-    f.write(sched.str_schedule(new_sched))
-    f.close()
-    
