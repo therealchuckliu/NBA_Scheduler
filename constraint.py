@@ -75,7 +75,7 @@ def valid_venue(m, k):
             return False
     
     for team in home_games:
-        if home_games[team] > m.TOTAL_GAMES/2:
+        if home_games[team] > (m.TOTAL_GAMES+1)/2:
             return False
     
     return True
@@ -105,7 +105,7 @@ def valid_matchup(m, k):
             add(games_played, key)
                 
     for state in games_played:
-        if games_played[state] > total_games(m, state[0], state[1]):
+        if games_played[state] > 2*total_games(m, state[0], state[1]):
             return False
     
     return True
