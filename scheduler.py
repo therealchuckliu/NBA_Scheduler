@@ -143,7 +143,6 @@ class Scheduler(object):
         while frontier:
             state = frontier.pop()
             statesExplored += 1
-            print "{}, {}".format(statesExplored, len(frontier))
             successors = state.successors()
             if successors is None:
                 return (state.domains, statesExplored)
