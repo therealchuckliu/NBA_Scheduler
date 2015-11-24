@@ -168,7 +168,7 @@ class Scheduler(object):
 if __name__ == '__main__':
     f = open('output.txt', 'w')
     sys.stdout = f
-    sched = Scheduler(2015, True, True)
+    sched = Scheduler(2015)
     today = dg.datetime.datetime.today()
     new_sched = sched.create_schedule()
     fin = dg.datetime.datetime.today()
