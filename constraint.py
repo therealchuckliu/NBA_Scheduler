@@ -29,84 +29,62 @@ def total_games(m, team, opponent):
     else:
         return m.INTERCONF_GAMES
         
-def valid_date(m, k):
-    dates = m.domains
-    t1, t2, g_n = k
-    dateindex = dates[k][0]
+def valid_date(m, sk):
+    domains = m.states[m.domains]
+    selected = m.states[m.selected]
+    t1, t2, g_n = sk
+    dateindex = selected[sk]
     #constraints are:
     #any game before g_n can't have a date >= g_n
     #any game after g_n can't have a date <= g_n
     
-    for state in dates:
+    for state in domains:
         x1, x2, g_x = state
-        #involves one of the two teams playing
-        if t1 in [x1, x2] or t2 in [x1, x2]:
+        #involves one of the two teams playing but not sk
+        if state is not sk and (t1 in [x1, x2] or t2 in [x1, x2]):
             if g_x < g_n:
                 #remove all dates >= dateindex
-                dates[state][:] = [x for x in dates[state] if x < dateindex]
+                domains[state][:] = [x for x in domains[state] if x < dateindex]
             elif g_x > g_n:
                 #remove all dates <= dateindex
-                dates[state][:] = [x for x in dates[state] if x > dateindex]
-            if len(dates[state]) == 0:
+                domains[state][:] = [x for x in domains[state] if x > dateindex]
+            if len(domains[state]) == 0 and selected[state] is None:
                 return False
     
     return True
         
-def valid_venue(m, k):
-    venues = m.domains
-    #number of games played, key = (team1, team2, home)
-    #where home is True if played at team1
-    games_played = {}
-    #number of home games per team, key = team
+#check that the total number of home games is TOTAL_GAMES/2
+def valid_venue(m, sk):
+    selected = m.states[m.selected]
+    domains = m.states[m.domains]
     home_games = {}
-    for state in venues:
-        if len(venues[state]) == 1:
+    num_games = {}
+    for state in selected:
+        if selected[state] is not None:
             t1, t2, g_n = state
-            home = venues[state][0]
-            key = (t1, t2, home)
-            add(games_played, key)
+            home = selected[state]
             add(home_games, t1 if home else t2)
-        
-    for state in games_played:
-        t1, t2, home = state
-        games = games_played[state]
-        #number of home games per matchup should be roughly half of total games
-        if games > (total_games(m, t1, t2) + 1)/2:
-            return False
-    
+            add(num_games, (t1, t2))
     for team in home_games:
         if home_games[team] > (m.TOTAL_GAMES+1)/2:
             return False
-    
+    for state in num_games:
+        t1, t2 = state
+        #remove the last domain element in case where t1 and t2 play odd number of games
+        #domain was initialized to size 2*(num_games+1)/2
+        if num_games[state] == total_games(m, t1, t2):
+            domains[state] = []
     return True
-
-def valid_matchup(m, k):
-    team, game_num = k
-    matchups = m.domains
-    opponent = matchups[k][0]
-    #number of games played, key = (team1, team2) 
-    games_played = {}
-    
-    #reverse matchup must match
-    opp_k = (opponent, game_num)
-    if team not in matchups[opp_k]:
-        return False
-    matchups[opp_k] = [team]
             
-    for state in matchups:
-        t, g_n = state
-        if g_n == game_num and t is not opponent and team in matchups[state]:
-            matchups[state].remove(team)
-            if len(matchups[state]) == 0:
-                return False
-        if len(matchups[state]) == 1:
-            o = matchups[state][0]
-            key = (t, o) if t < o else (o, t)
-            add(games_played, key)
-                
-    for state in games_played:
-        if games_played[state] > 2*total_games(m, state[0], state[1]):
-            return False
-    
-    return True
+#set opponent's matchup and update their domain
+def valid_matchup(m, sk):
+    team, game_num = sk
+    domains = m.states[m.domains]
+    selected = m.states[m.selected]
+    opponent = selected[sk]
+    if selected[(opponent, game_num)] is None:
+        domains[opponent].remove(team)
+        selected[(opponent, game_num)] = team
+        return True
+    return False
     

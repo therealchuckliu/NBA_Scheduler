@@ -30,17 +30,12 @@ def map2list(m):
     l = []
     for k,v in m.iteritems():
         new_k = []
-        new_v = []
+        new_v = v.name if type(v) is dg.org.Team else v
         for t in k:
             if type(t) is dg.org.Team:
                 new_k.append(t.name)
             else:
                 new_k.append(t)
-        for t in v:
-            if type(t) is dg.org.Team:
-                new_v.append(t.name)
-            else:
-                new_v.append(t)
         l.append({'key':new_k, 'value': new_v})
     return l
     
@@ -48,17 +43,12 @@ def list2map(league, l):
     m = {}
     for kv in l:
         new_k = []
-        new_v = []
+        new_v = league.get_team(kv['value']) if type(kv['value']) is unicode else kv['value']
         for t in kv['key']:
             if type(t) is unicode:
                 new_k.append(league.get_team(t))
             else:
                 new_k.append(t)
-        for t in kv['value']:
-            if type(t) is unicode:
-                new_v.append(league.get_team(t))
-            else:
-                new_v.append(t)
         m[tuple(new_k)] = new_v
     return m
 
@@ -70,15 +60,15 @@ class Scheduler(object):
     def create_schedule(self, matchups_json = False, venues_json = False, dates_json = False):
         print "{}: Starting".format(dg.datetime.datetime.today())
         matchups = None
+        initialState = dom.Matchups(None, self.data.league, self.data.game_indices)
         if matchups_json:
             matchups = read_output(self.data.league, "Matchups")
         else:
-            initialState = dom.Matchups(None, self.data.league, self.data.game_indices)
             matchups, matchups_statesExplored = self.DFS(initialState)
-            write_output(matchups, "Matchups")        
-            print "{}: Matchups, {} states explored".format(dg.datetime.datetime.today(), matchups_statesExplored)
+            print "{}: Matchups, {} states explored, {}".format(dg.datetime.datetime.today(), matchups_statesExplored, matchups is not None)
         
         if matchups is not None:
+            write_output(matchups, "Matchups")        
             #now we have our matchups which is a dict of (team, game_num) -> [opponent]
             #we next want to assign home/away so we create a map of the form:
             #(team1, team2, game_num) -> [True/False]
@@ -89,52 +79,58 @@ class Scheduler(object):
                 venues = read_output(self.data.league, "Venues")
             else:
                 venues_domains = {}
+                venues_selected = {}
                 for state in matchups:
                     t, g_n = state
-                    o = matchups[state][0]
-                    v_k = (t, o, g_n) if t < o else (o, t, g_n)
-                    if v_k not in venues_domains:
-                        venues_domains[v_k] = [True, False]
-                venueState = dom.Venues(venues_domains)
+                    o = matchups[state]
+                    sk = (t, o, g_n) if t < o else (o, t, g_n)
+                    dk = (t, o) if t < o else (o, t)
+                    if sk not in venues_selected:
+                        venues_selected[sk] = None
+                        venues_domains[dk] = [True, False] * ((dom.constraint.total_games(initialState, t, o) + 1)/2)
+                venueState = dom.Venues({initialState.domains: venues_domains, initialState.selected: venues_selected})
                 venues, venues_statesExplored = self.DFS(venueState)
-                write_output(venues, "Venues")
-                print "{}: Venues, {} states explored".format(dg.datetime.datetime.today(), venues_statesExplored)
+                print "{}: Venues, {} states explored, {}".format(dg.datetime.datetime.today(), venues_statesExplored, venues is not None)
             
             if venues is not None:
-                #now we have our venues which is a dict of (team1, team2, game_num) -> [True/False]
+                #now we have our venues which is a dict of (team1, team2, game_num) -> True/False
                 #we next want to assign dates to play so we create a map of the form:
                 #(team1, team2, game_num) -> [d1, d2, d3, ...]
                 #data.game_indices has around 160 dates for 82 games, so we should minimize the
                 #domains to be roughly 2*game_num +/- window dates
+                write_output(venues, "Venues")
                 dates = None
                 if dates_json:
                     dates = read_output(self.data.league, "Dates")
                 else:
-                    window = 3
+                    window = 5
                     dates_domains = {}
+                    dates_selected = {}
                     for state in venues:
                         t1, t2, g_n = state
-                        window_min = max(0, 2*g_n - window)
-                        window_max = min(max(self.data.game_indices), 2*g_n + window)
+                        multiplier = len(self.data.game_indices)/initialState.TOTAL_GAMES
+                        window_min = max(0, multiplier*g_n - window)
+                        window_max = min(max(self.data.game_indices), multiplier*g_n + window)
                         dates = []
                         for d in self.data.game_indices:
                             if d >= window_min and d <= window_max:
                                 dates.append(d)
                         dates_domains[state] = dates
-                    dateState = dom.Dates(dates_domains)
+                        dates_selected[state] = None
+                    dateState = dom.Dates({initialState.domains: dates_domains, initialState.selected: dates_selected})
                     dates, dates_statesExplored = self.DFS(dateState)
-                    write_output(dates, "Dates")
-                    print "{}: Dates, {} states explored".format(dg.datetime.datetime.today(), dates_statesExplored)
+                    print "{}: Dates, {} states explored, {}".format(dg.datetime.datetime.today(), dates_statesExplored, dates is not None)
                     
                 if dates is not None:
                     #create a master map of everything of the form:
                     #(team, game_num) -> (opponent, home, dateindex)
                     #where home is true if played at team's venue
+                    write_output(dates, "Dates")
                     sched_map = {}
                     for state in venues:
                         t1, t2, g_n = state
-                        home = venues[state][0]
-                        date = dates[state][0]
+                        home = venues[state]
+                        date = dates[state]
                         sched_map[(t1, g_n)] = (t2, home, date)
                         sched_map[(t2, g_n)] = (t1, not home, date)
                     return sched_map
@@ -148,11 +144,13 @@ class Scheduler(object):
         while frontier:
             state = frontier.pop()
             statesExplored += 1
-            successors = state.successors()
-            if successors is None:
-                return (state.domains, statesExplored)
+            #print "{}, {}".format(statesExplored, len(frontier))
+            if state.complete():
+                return (state.states[state.selected], statesExplored)
             else:
-                frontier.extend(successors)
+                successors = state.successors()
+                if successors is not None:
+                    frontier.extend(successors)
         return (None, statesExplored)
         
                    
@@ -173,8 +171,8 @@ class Scheduler(object):
         return "{},{},{}".format(self.data.i2d[dateindex], team.name if home else opponent.name, opponent.name if home else team.name)
 
 if __name__ == '__main__':
-    f = open('output.txt', 'w')
-    sys.stdout = f
+    #f = open('output.txt', 'w')
+    #sys.stdout = f
     sched = Scheduler(2015)
     today = dg.datetime.datetime.today()
     new_sched = sched.create_schedule()
@@ -182,4 +180,4 @@ if __name__ == '__main__':
     elapsed = fin - today
     elapsed = elapsed.total_seconds()
     print elapsed/60.
-    f.close()
+    #f.close()
