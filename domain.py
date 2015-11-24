@@ -13,11 +13,11 @@ import random
 
 class TGBase(object):    
     def __init__(self, states = None, league = None, all_dates = None):
-        self.TOTAL_GAMES = 15
-        self.DIVISIONAL_GAMES = 0
-        self.CONF_OPPONENTS_GAMES = 0
-        self.REMAINING_CONF_GAMES = 0
-        self.INTERCONF_GAMES = 1
+        self.TOTAL_GAMES = 82
+        self.DIVISIONAL_GAMES = 4
+        self.CONF_OPPONENTS_GAMES = 4
+        self.REMAINING_CONF_GAMES = 3
+        self.INTERCONF_GAMES = 2
         self.states = {} if states is None else states
         self.domains = "domains"
         self.selected = "selected"

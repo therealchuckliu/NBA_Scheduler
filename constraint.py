@@ -50,6 +50,8 @@ def valid_date(m, sk):
                 domains[state][:] = [x for x in domains[state] if x > dateindex]
             if len(domains[state]) == 0 and selected[state] is None:
                 return False
+        elif state is sk:
+            domains[state][:] = []
     
     return True
         

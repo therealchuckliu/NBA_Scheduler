@@ -54,14 +54,16 @@ def list2map(league, l):
 
 class Scheduler(object):
     
-    def __init__(self, year):
+    def __init__(self, year, matchups_json = False, venues_json = False):
         self.data = dg.DataGen(year)
+        self.matchups_json = matchups_json
+        self.venues_json = venues_json
 
-    def create_schedule(self, matchups_json = False, venues_json = False, dates_json = False):
+    def create_schedule(self):
         print "{}: Starting".format(dg.datetime.datetime.today())
         matchups = None
         initialState = dom.Matchups(None, self.data.league, self.data.game_indices)
-        if matchups_json:
+        if self.matchups_json:
             matchups = read_output(self.data.league, "Matchups")
         else:
             matchups, matchups_statesExplored = self.DFS(initialState)
@@ -75,7 +77,7 @@ class Scheduler(object):
             #where True indicates it's played at team1's venue
             #also team1 < team2 alphabetically
             venues = None
-            if venues_json:
+            if self.venues_json:
                 venues = read_output(self.data.league, "Venues")
             else:
                 venues_domains = {}
@@ -99,33 +101,26 @@ class Scheduler(object):
                 #data.game_indices has around 160 dates for 82 games, so we should minimize the
                 #domains to be roughly 2*game_num +/- window dates
                 write_output(venues, "Venues")
-                dates = None
-                if dates_json:
-                    dates = read_output(self.data.league, "Dates")
-                else:
-                    window = 5
-                    dates_domains = {}
-                    dates_selected = {}
-                    for state in venues:
-                        t1, t2, g_n = state
-                        multiplier = len(self.data.game_indices)/initialState.TOTAL_GAMES
-                        window_min = max(0, multiplier*g_n - window)
-                        window_max = min(max(self.data.game_indices), multiplier*g_n + window)
-                        dates = []
-                        for d in self.data.game_indices:
-                            if d >= window_min and d <= window_max:
-                                dates.append(d)
-                        dates_domains[state] = dates
-                        dates_selected[state] = None
-                    dateState = dom.Dates({initialState.domains: dates_domains, initialState.selected: dates_selected})
-                    dates, dates_statesExplored = self.DFS(dateState)
-                    print "{}: Dates, {} states explored, {}".format(dg.datetime.datetime.today(), dates_statesExplored, dates is not None)
-                    
+                window = 10
+                dates_domains = {}
+                dates_selected = {}
+                multiplier = len(self.data.game_indices)/initialState.TOTAL_GAMES
+                for state in venues:
+                    t1, t2, g_n = state
+                    window_min = max(0, multiplier*g_n - window)
+                    window_max = min(max(self.data.game_indices), multiplier*g_n + window)
+                    ht = t1 if venues[state] else t2
+                    dates_domains[state] = [d for d in self.data.game_indices if (d >= window_min and d <= window_max and d in ht.home_dates)]
+                    dates_selected[state] = None
+                dateState = dom.Dates({initialState.domains: dates_domains, initialState.selected: dates_selected})
+                dates, dates_statesExplored = self.DFS(dateState)
+                print "{}: Dates, {} states explored, {}".format(dg.datetime.datetime.today(), dates_statesExplored, dates is not None)
+                
                 if dates is not None:
+                    write_output(dates, "Dates")
                     #create a master map of everything of the form:
                     #(team, game_num) -> (opponent, home, dateindex)
                     #where home is true if played at team's venue
-                    write_output(dates, "Dates")
                     sched_map = {}
                     for state in venues:
                         t1, t2, g_n = state
@@ -171,13 +166,13 @@ class Scheduler(object):
         return "{},{},{}".format(self.data.i2d[dateindex], team.name if home else opponent.name, opponent.name if home else team.name)
 
 if __name__ == '__main__':
-    #f = open('output.txt', 'w')
-    #sys.stdout = f
-    sched = Scheduler(2015)
+    f = open('output.txt', 'w')
+    sys.stdout = f
+    sched = Scheduler(2015, True, True)
     today = dg.datetime.datetime.today()
     new_sched = sched.create_schedule()
     fin = dg.datetime.datetime.today()
     elapsed = fin - today
     elapsed = elapsed.total_seconds()
     print elapsed/60.
-    #f.close()
+    f.close()
