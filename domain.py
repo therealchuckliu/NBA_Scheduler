@@ -13,10 +13,10 @@ import random
 
 class TGBase(object):    
     def __init__(self, states = None, league = None, all_dates = None):
-        self.TOTAL_GAMES = 34
-        self.DIVISIONAL_GAMES = 1
-        self.CONF_OPPONENTS_GAMES = 0
-        self.REMAINING_CONF_GAMES = 0
+        self.TOTAL_GAMES = 82
+        self.DIVISIONAL_GAMES = 4
+        self.CONF_OPPONENTS_GAMES = 4
+        self.REMAINING_CONF_GAMES = 3
         self.INTERCONF_GAMES = 2
         self.states = {} if states is None else states
         self.domains = "domains"
@@ -96,8 +96,10 @@ class Matchups(TGBase):
     def successors(self):
         return self.successorDomains(Matchups, constraint.valid_matchup)
     def min_key_helper(self, min_k):
-        opponents_left = set(self.states[self.domains][min_k])
-        opponents_possible = set()
+        opponents_left = {}
+        for opponent in self.states[self.domains][min_k]:
+            constraint.add(opponents_left, opponent)
+        opponents_possible = {}
         game_counts = {}
         game = None
         for i in range(1, self.TOTAL_GAMES + 1):
@@ -105,11 +107,19 @@ class Matchups(TGBase):
                 for opponent in opponents_left:
                     if self.states[self.selected][(opponent, i)] is None:
                         constraint.add(game_counts, i)
-                        opponents_possible.add(opponent)
+                        constraint.add(opponents_possible, opponent)
+                #no opponents left for game i meaning this schedule won't work
                 if i not in game_counts:
                     return None
-        if len(opponents_possible) < len(opponents_left):
-            return None
+        for opponent in opponents_left:
+            #for the remaining game numbers left, check that the opponent
+            #has matching game numbers left for at least as many times as they
+            #have left to play
+            if opponent in opponents_possible:
+                if opponents_possible[opponent] < opponents_left[opponent]:
+                    return None
+            else:
+                return None
         if len(game_counts) > 0:
             game = sorted(game_counts.keys(), key = lambda x: game_counts[x])[0]
             return (min_k, game)
@@ -136,14 +146,21 @@ class Venues(TGBase):
                     teams_selected.pop(t1, None)
                 if teams_selected[t2] == self.TOTAL_GAMES:
                     teams_selected.pop(t2, None)
-                
+        
+        #teams_selected stores how many teams have selected their home/away for games
+        #removing those that have had all their games scheduled with hom/away
+        #if it's empty then no team has had a selected home/away yet
         if len(teams_selected) == 0:
             for k in self.states[self.domains]:
                 if len(self.states[self.domains][k]) > 0:
                     return (k, self.min_key_helper(k))
+                    
+        #choose the team with the most selected home/away venues, i.e. least domain size remaining
         min_k = sorted(teams_selected.keys(), key=lambda x: -teams_selected[x])[0]
         best_k = None
         best_len = float("inf")
+        #we have the team we want to next choose a venue for, but domains are pairs of teams, 
+        #so choose the pair with the remaining least domain size
         for k in self.states[self.domains]:
             t1, t2 = k
             l = len(self.states[self.domains][k])
