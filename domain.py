@@ -13,10 +13,10 @@ import random
 
 class TGBase(object):    
     def __init__(self, states = None, league = None, all_dates = None):
-        self.TOTAL_GAMES = 82
-        self.DIVISIONAL_GAMES = 4
-        self.CONF_OPPONENTS_GAMES = 4
-        self.REMAINING_CONF_GAMES = 3
+        self.TOTAL_GAMES = 34
+        self.DIVISIONAL_GAMES = 1
+        self.CONF_OPPONENTS_GAMES = 0
+        self.REMAINING_CONF_GAMES = 0
         self.INTERCONF_GAMES = 2
         self.states = {} if states is None else states
         self.domains = "domains"
@@ -96,9 +96,23 @@ class Matchups(TGBase):
     def successors(self):
         return self.successorDomains(Matchups, constraint.valid_matchup)
     def min_key_helper(self, min_k):
+        opponents_left = set(self.states[self.domains][min_k])
+        opponents_possible = set()
+        game_counts = {}
+        game = None
         for i in range(1, self.TOTAL_GAMES + 1):
             if self.states[self.selected][(min_k, i)] is None:
-                return (min_k, i)
+                for opponent in opponents_left:
+                    if self.states[self.selected][(opponent, i)] is None:
+                        constraint.add(game_counts, i)
+                        opponents_possible.add(opponent)
+                if i not in game_counts:
+                    return None
+        if len(opponents_possible) < len(opponents_left):
+            return None
+        if len(game_counts) > 0:
+            game = sorted(game_counts.keys(), key = lambda x: game_counts[x])[0]
+            return (min_k, game)
         return None
         
 class Venues(TGBase):
