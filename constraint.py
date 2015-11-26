@@ -60,16 +60,33 @@ def valid_venue(m, sk):
     selected = m.states[m.selected]
     domains = m.states[m.domains]
     home_games = {}
+    away_games = {}
     num_games = {}
     for state in selected:
         if selected[state] is not None:
             t1, t2, g_n = state
             home = selected[state]
             add(home_games, t1 if home else t2)
+            add(away_games, t2 if home else t1)
             add(num_games, (t1, t2))
+            
+    #check if home/away game limits have been reached, if so remove from domains
     for team in home_games:
-        if home_games[team] > (m.TOTAL_GAMES+1)/2:
-            return False
+        if home_games[team] == (m.TOTAL_GAMES+1)/2:
+            for state in domains:
+                t1, t2 = state
+                if t2 is team:
+                    domains[state] = [x for x in domains[state] if x]
+                elif t1 is team:
+                    domains[state] = [x for x in domains[state] if not x]
+    for team in away_games:
+        if away_games[team] == (m.TOTAL_GAMES+1)/2:
+            for state in domains:
+                t1, t2 = state
+                if t2 is team:
+                    domains[state] = [x for x in domains[state] if not x]
+                elif t1 is team:
+                    domains[state] = [x for x in domains[state] if x]
     for state in num_games:
         t1, t2 = state
         #remove the last domain element in case where t1 and t2 play odd number of games

@@ -57,14 +57,18 @@ class TGBase(object):
         domains = []
         dk, sk = self.min_key()
         if dk is not None and sk is not None:
-            #iterate through domain and add to list
+            #iterate through domain and add to list but keep track of ones we've already done
+            #because some domains are repeated elements
+            added_elems = set()
             for dom_elem in self.states[self.domains][dk]:
-                new_states = self.copy()
-                new_states[self.domains][dk].remove(dom_elem)
-                new_states[self.selected][sk] = dom_elem
-                new_obj = domain_class(new_states)
-                if constraint_func(new_obj, sk):
-                    domains.append(new_obj)
+                if dom_elem not in added_elems:
+                    new_states = self.copy()
+                    new_states[self.domains][dk].remove(dom_elem)
+                    new_states[self.selected][sk] = dom_elem
+                    new_obj = domain_class(new_states)
+                    if constraint_func(new_obj, sk):
+                        domains.append(new_obj)
+                    added_elems.add(dom_elem)
             return domains
         return None
         
@@ -104,9 +108,35 @@ class Venues(TGBase):
         tx, ty = min_k
         for state in self.states[self.selected]:
             t1, t2, gn = state
-            if self.states[self.selected][state] is None and tx is t1 and ty is t2:
+            if self.states[self.selected][state] is None and t1 is tx and t2 is ty:
                 return state
         return None
+    def min_key(self):
+        teams_selected = {}
+        for state in self.states[self.selected]:
+            if self.states[self.selected][state] is not None:
+                t1, t2, g_n = state
+                constraint.add(teams_selected, t1)
+                constraint.add(teams_selected, t2)
+                if teams_selected[t1] == self.TOTAL_GAMES:
+                    teams_selected.pop(t1, None)
+                if teams_selected[t2] == self.TOTAL_GAMES:
+                    teams_selected.pop(t2, None)
+                
+        if len(teams_selected) == 0:
+            for k in self.states[self.domains]:
+                if len(self.states[self.domains][k]) > 0:
+                    return (k, self.min_key_helper(k))
+        min_k = sorted(teams_selected.keys(), key=lambda x: -teams_selected[x])[0]
+        best_k = None
+        best_len = float("inf")
+        for k in self.states[self.domains]:
+            t1, t2 = k
+            l = len(self.states[self.domains][k])
+            if (t1 is min_k or t2 is min_k) and  l > 0 and l < best_len:
+                best_len = l
+                best_k = k
+        return (best_k, self.min_key_helper(best_k)) if best_k is not None else (None, None)     
         
 class Dates(TGBase):
     def successors(self):

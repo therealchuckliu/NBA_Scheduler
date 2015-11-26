@@ -10,7 +10,6 @@ CSP code running DFS on variables
 import domain as dom
 import datagen as dg
 import json
-import sys
 import os
 
 def write_output(domains, filename):
@@ -166,13 +165,13 @@ class Scheduler(object):
         return "{},{},{}".format(self.data.i2d[dateindex], team.name if home else opponent.name, opponent.name if home else team.name)
 
 if __name__ == '__main__':
-    f = open('output.txt', 'w')
-    sys.stdout = f
+    #The 2 True's correspond to reading in Matches.json and Venues.json so you don't have to recalculate
     sched = Scheduler(2015)
     today = dg.datetime.datetime.today()
     new_sched = sched.create_schedule()
     fin = dg.datetime.datetime.today()
     elapsed = fin - today
     elapsed = elapsed.total_seconds()
+    #calculates minutes to run
     print elapsed/60.
-    f.close()
+    #sched is now a map of (team, game_num) -> (opponent, home, dateindex)
