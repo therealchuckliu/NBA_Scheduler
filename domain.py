@@ -13,11 +13,11 @@ import random
 
 class TGBase(object):    
     def __init__(self, states = None, league = None, all_dates = None):
-        self.TOTAL_GAMES = 82
         self.DIVISIONAL_GAMES = 4
         self.CONF_OPPONENTS_GAMES = 4
         self.REMAINING_CONF_GAMES = 3
         self.INTERCONF_GAMES = 2
+        self.TOTAL_GAMES = self.DIVISIONAL_GAMES*4 + self.CONF_OPPONENTS_GAMES*6 + self.REMAINING_CONF_GAMES*4 + self.INTERCONF_GAMES*15
         self.states = {} if states is None else states
         self.domains = "domains"
         self.selected = "selected"
@@ -96,34 +96,10 @@ class Matchups(TGBase):
     def successors(self):
         return self.successorDomains(Matchups, constraint.valid_matchup)
     def min_key_helper(self, min_k):
-        opponents_left = {}
-        for opponent in self.states[self.domains][min_k]:
-            constraint.add(opponents_left, opponent)
-        opponents_possible = {}
-        game_counts = {}
-        game = None
-        for i in range(1, self.TOTAL_GAMES + 1):
-            if self.states[self.selected][(min_k, i)] is None:
-                for opponent in opponents_left:
-                    if self.states[self.selected][(opponent, i)] is None:
-                        constraint.add(game_counts, i)
-                        constraint.add(opponents_possible, opponent)
-                #no opponents left for game i meaning this schedule won't work
-                if i not in game_counts:
-                    return None
-        for opponent in opponents_left:
-            #for the remaining game numbers left, check that the opponent
-            #has matching game numbers left for at least as many times as they
-            #have left to play
-            if opponent in opponents_possible:
-                if opponents_possible[opponent] < opponents_left[opponent]:
-                    return None
-            else:
-                return None
-        if len(game_counts) > 0:
-            game = sorted(game_counts.keys(), key = lambda x: game_counts[x])[0]
-            return (min_k, game)
-        return None
+        counts = constraint.game_counts(self, min_k)
+        if counts is None or len(counts) == 0:
+            return None
+        return (min_k, sorted(counts, key = lambda x: counts[x])[0])
         
 class Venues(TGBase):
     def successors(self):

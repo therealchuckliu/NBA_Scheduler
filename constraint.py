@@ -104,6 +104,34 @@ def valid_matchup(m, sk):
     if selected[(opponent, game_num)] is None:
         domains[opponent].remove(team)
         selected[(opponent, game_num)] = team
-        return True
+        return game_counts(m, team) is not None
     return False
+    
+#get a hash for a team of games left vs. opponents, possible games given schedule
+#of opponents, and the counts at each game of possible opponents
+def game_counts(m, team):
+    opponents_left = {}
+    for opponent in m.states[m.domains][team]:
+        add(opponents_left, opponent)
+    opponents_possible = {}
+    game_counts = {}
+    for i in range(1, m.TOTAL_GAMES + 1):
+        if m.states[m.selected][(team, i)] is None:
+            for opponent in opponents_left:
+                if m.states[m.selected][(opponent, i)] is None:
+                    add(game_counts, i)
+                    add(opponents_possible, opponent)
+            #no opponents left for game i meaning this schedule won't work
+            if i not in game_counts:
+                return None
+    for opponent in opponents_left:
+        #for the remaining game numbers left, check that the opponent
+        #has matching game numbers left for at least as many times as they
+        #have left to play
+        if opponent in opponents_possible:
+            if opponents_possible[opponent] < opponents_left[opponent]:
+                return None
+        else:
+            return None
+    return game_counts
     
