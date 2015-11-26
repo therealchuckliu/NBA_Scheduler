@@ -27,9 +27,16 @@ class Team(OrgEq):
         self.name = name
         #state team is in, e.g. New York
         self.state = state
-        #50-60 available dates to host home games
-        self.home_dates = np.random.choice(indices, np.random.randint(50, 60), replace=False)
-        self.home_dates.sort()
+        #50-60 available dates to host home games, want an even distribution over season
+        #every 5 dates pick 2 possible home dates
+        self.home_dates = []
+        skip = 5
+        for i in range(len(indices))[::skip]:
+            slice_len = len(indices[i:i+skip])
+            num_pick = 2 if slice_len == skip else 1
+            dates = np.random.choice(indices[i:i+10], num_pick, replace=False)
+            dates.sort()
+            self.home_dates += list(dates)
         #these are the conference opponents that you'll play 4 games against (6 of them)
         self.conf_opponents = set([])
 
