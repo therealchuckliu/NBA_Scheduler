@@ -139,7 +139,12 @@ class Scheduler(object):
             state = frontier.pop()
             statesExplored += 1
             if statesExplored % 100000 == 0:
-                print "{}: {}, {}".format(dg.datetime.datetime.today(), statesExplored, len(frontier))
+                num_selected = 0
+                for s in state.states[state.selected]:
+                    if state.states[state.selected][s] is not None:
+                        num_selected += 1
+                print "{}: {}, {}, {}".format(dg.datetime.datetime.today(), statesExplored, len(frontier), num_selected)
+                
             if state.complete():
                 return (state.states[state.selected], statesExplored)
             else:

@@ -95,11 +95,23 @@ class TGBase(object):
 class Matchups(TGBase):
     def successors(self):
         return self.successorDomains(Matchups, constraint.valid_matchup)
-    def min_key_helper(self, min_k):
-        counts = constraint.game_counts(self, min_k)
-        if counts is None or len(counts) == 0:
-            return None
-        return (min_k, sorted(counts, key = lambda x: counts[x])[0])
+    def min_key(self):
+        min_count = float("inf")
+        min_game = None
+        best_k = None
+        for k in self.states[self.domains]:
+            l = len(self.states[self.domains][k])
+            if l > 0:
+                counts = constraint.game_counts(self, k)
+                if counts is not None:
+                    l_k = sorted(counts.keys(), key= lambda x: counts[x])[0]
+                    if counts[l_k] < min_count:
+                        min_count = counts[l_k]
+                        min_game = l_k
+                        best_k = k
+        if best_k is None:
+            return (None, None)
+        return (best_k, (best_k, min_game))
         
 class Venues(TGBase):
     def successors(self):
