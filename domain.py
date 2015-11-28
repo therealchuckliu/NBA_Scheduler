@@ -60,17 +60,24 @@ class TGBase(object):
             #iterate through domain and add to list but keep track of ones we've already done
             #because some domains are repeated elements
             added_elems = set()
-            for dom_elem in self.states[self.domains][dk]:
+            for dom_elem in self.ordered_domain(dk, sk):
                 if dom_elem not in added_elems:
-                    new_states = self.copy()
-                    new_states[self.domains][dk].remove(dom_elem)
-                    new_states[self.selected][sk] = dom_elem
-                    new_obj = domain_class(new_states)
+                    new_obj = self.copy_states(domain_class, dk, sk, dom_elem)
                     if constraint_func(new_obj, sk):
                         domains.append(new_obj)
                     added_elems.add(dom_elem)
             return domains
         return None
+    
+    def ordered_domain(self, dk, sk):
+        return self.states[self.domains][dk]
+        
+    def copy_states(self, domain_class, dk, sk, dom_elem):
+        new_states = self.copy()
+        new_states[self.domains][dk].remove(dom_elem)
+        new_states[self.selected][sk] = dom_elem
+        new_obj = domain_class(new_states)    
+        return new_obj
         
     def successors(self):
         raise NotImplementedError('Base class, use a super class')
@@ -96,8 +103,8 @@ class Matchups(TGBase):
     def successors(self):
         return self.successorDomains(Matchups, constraint.valid_matchup)
     def min_key(self):
-        min_count = float("inf")
-        min_game = None
+        best_count = float("inf")
+        best_game = None
         best_k = None
         for k in self.states[self.domains]:
             l = len(self.states[self.domains][k])
@@ -105,13 +112,25 @@ class Matchups(TGBase):
                 counts = constraint.game_counts(self, k)
                 if counts is not None:
                     l_k = sorted(counts.keys(), key= lambda x: counts[x])[0]
-                    if counts[l_k] < min_count:
-                        min_count = counts[l_k]
-                        min_game = l_k
+                    if counts[l_k] < best_count:
+                        best_count = counts[l_k]
+                        best_game = l_k
                         best_k = k
         if best_k is None:
             return (None, None)
-        return (best_k, (best_k, min_game))
+        return (best_k, (best_k, best_game))
+    def ordered_domain(self, dk, sk):
+        domain_dict = {}
+        for dom_elem in self.states[self.domains][dk]:
+            new_obj = self.copy_states(Matchups, dk, sk, dom_elem)
+            counts = constraint.game_counts(new_obj, dk)
+            if counts is not None:
+                if len(counts) == 0:
+                    domain_dict[dom_elem] = float("inf")
+                else:
+                    l_k = sorted(counts.values())[0]
+                    domain_dict[dom_elem] = l_k
+        return sorted(domain_dict.keys(), key= lambda x: domain_dict[x])
         
 class Venues(TGBase):
     def successors(self):
