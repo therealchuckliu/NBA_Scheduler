@@ -122,14 +122,15 @@ class Matchups(TGBase):
     def ordered_domain(self, dk, sk):
         domain_dict = {}
         for dom_elem in self.states[self.domains][dk]:
-            new_obj = self.copy_states(Matchups, dk, sk, dom_elem)
-            counts = constraint.game_counts(new_obj, dk)
-            if counts is not None:
-                if len(counts) == 0:
-                    domain_dict[dom_elem] = float("inf")
-                else:
-                    l_k = sorted(counts.values())[0]
-                    domain_dict[dom_elem] = l_k
+            if dom_elem not in domain_dict:
+                new_obj = self.copy_states(Matchups, dk, sk, dom_elem)
+                counts = constraint.game_counts(new_obj, dk)
+                if counts is not None:
+                    if len(counts) == 0:
+                        domain_dict[dom_elem] = float("inf")
+                    else:
+                        l_k = sorted(counts.values())[0]
+                        domain_dict[dom_elem] = l_k
         return sorted(domain_dict.keys(), key= lambda x: domain_dict[x])
         
 class Venues(TGBase):
