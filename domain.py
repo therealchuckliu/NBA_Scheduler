@@ -131,7 +131,7 @@ class Matchups(TGBase):
                     else:
                         l_k = sorted(counts.values())[0]
                         domain_dict[dom_elem] = l_k
-        return sorted(domain_dict.keys(), key= lambda x: domain_dict[x])
+        return sorted(domain_dict.keys(), key= lambda x: -domain_dict[x])
         
 class Venues(TGBase):
     def successors(self):
