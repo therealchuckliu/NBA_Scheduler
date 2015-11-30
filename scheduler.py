@@ -84,8 +84,8 @@ class Scheduler(object):
                 for state in matchups:
                     t, g_n = state
                     o = matchups[state]
-                    sk = (t, o, g_n) if t < o else (o, t, g_n)
-                    dk = (t, o) if t < o else (o, t)
+                    sk = (t, o, g_n) if t.name < o.name else (o, t, g_n)
+                    dk = (t, o) if t.name < o.name else (o, t)
                     if sk not in venues_selected:
                         venues_selected[sk] = None
                         venues_domains[dk] = [True, False] * ((dom.constraint.total_games(initialState, t, o) + 1)/2)
