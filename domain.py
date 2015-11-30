@@ -131,7 +131,9 @@ class Matchups(TGBase):
                     else:
                         l_k = sorted(counts.values())[0]
                         domain_dict[dom_elem] = l_k
-        return sorted(domain_dict.keys(), key= lambda x: -domain_dict[x])
+        #order domain elements from lowest to highest, when this gets added
+        #to the states list, it will be read backwards so highest to lowest
+        return sorted(domain_dict.keys(), key= lambda x: domain_dict[x])
         
 class Venues(TGBase):
     def successors(self):
