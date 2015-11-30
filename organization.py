@@ -34,7 +34,7 @@ class Team(OrgEq):
         for i in range(len(indices))[::skip]:
             slice_len = len(indices[i:i+skip])
             num_pick = 2 if slice_len == skip else 1
-            dates = np.random.choice(indices[i:i+10], num_pick, replace=False)
+            dates = np.random.choice(indices[i:i+5], num_pick, replace=False)
             dates.sort()
             self.home_dates += list(dates)
         #these are the conference opponents that you'll play 4 games against (6 of them)
