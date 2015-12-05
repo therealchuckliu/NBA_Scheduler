@@ -65,7 +65,7 @@ class TGBase(object):
                     new_obj = self.copy_states(domain_class, dk, sk, dom_elem)
                     if constraint_func(new_obj, sk):
                         domains.append(new_obj)
-                    added_elems.add(dom_elem)
+                    added_elems.add(dom_elem) 
             return domains
         return None
     
@@ -140,11 +140,15 @@ class Venues(TGBase):
         return self.successorDomains(Venues, constraint.valid_venue)
     def min_key_helper(self, min_k):
         tx, ty = min_k
+        # Find matchup between tx, ty with the lowest game number
+        min_gn = float('inf')
+        min_state = None
         for state in self.states[self.selected]:
             t1, t2, gn = state
-            if self.states[self.selected][state] is None and t1 is tx and t2 is ty:
-                return state
-        return None
+            if self.states[self.selected][state] is None and t1 is tx and t2 is ty and gn < min_gn:
+                    min_gn = gn
+                    min_state = state      
+        return min_state
     def min_key(self):
         teams_selected = {}
         for state in self.states[self.selected]:
@@ -158,7 +162,7 @@ class Venues(TGBase):
                     teams_selected.pop(t2, None)
         
         #teams_selected stores how many teams have selected their home/away for games
-        #removing those that have had all their games scheduled with hom/away
+        #removing those that have had all their games scheduled with home/away
         #if it's empty then no team has had a selected home/away yet
         if len(teams_selected) == 0:
             for k in self.states[self.domains]:
@@ -178,7 +182,30 @@ class Venues(TGBase):
                 best_len = l
                 best_k = k
         return (best_k, self.min_key_helper(best_k)) if best_k is not None else (None, None)     
-        
+
+    def successorDomains(self, domain_class, constraint_func):
+        domains = []
+        dk, sk = self.min_key()
+        if dk is not None and sk is not None:
+            #iterate through domain and add to list but keep track of ones we've already done
+            #because some domains are repeated elements
+            # Note for venues, dom_elems are either True or False,
+            # so we can stop traversing self.ordered_domain(dk, sk) if we find both True and False
+            added_elems = set()
+            for dom_elem in self.ordered_domain(dk, sk):
+                if dom_elem not in added_elems:
+                    new_obj = self.copy_states(domain_class, dk, sk, dom_elem)
+                    # all this constraint does is remove domains
+                    if constraint_func(new_obj, sk):
+                        domains.append(new_obj)
+                    added_elems.add(dom_elem)
+                    if len(added_elems) == 2:
+                        # quit early if we have already added the only possible next states
+                        return domains
+            return domains
+        return None
+    
+    
 class Dates(TGBase):
     def successors(self):
         return self.successorDomains(Dates, constraint.valid_date)
