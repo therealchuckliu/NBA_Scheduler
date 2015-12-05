@@ -51,6 +51,29 @@ def list2map(league, l):
         m[tuple(new_k)] = new_v
     return m
 
+def binary_search(A,x,lo=0, hi=None):
+    # Binary Search that returns the index of x if x is in the array A
+    # otherwise, returns the index of minimum element that is larger than x
+    # Returns None if there is no element greater than or equal to x
+    # lo index
+    # hi index
+    if hi == None:
+        hi = len(A)-1
+    if hi - lo <= 0:
+        for i in range(lo,len(A)):
+            if A[i] >= x:
+                return i
+        return None
+    mid = (hi-lo)/2 + lo
+    mid_val = A[mid]
+    if x == mid_val:
+        return mid
+    elif x < mid_val:
+        return binary_search(A,x,lo,mid-1)
+    else:
+        # x > mid_val
+        return binary_search(A,x,mid+1, hi)
+
 class Scheduler(object):
     
     def __init__(self, year, matchups_json = False, venues_json = False):
@@ -103,13 +126,29 @@ class Scheduler(object):
                 window = 10
                 dates_domains = {}
                 dates_selected = {}
+                #print len(self.data.game_indices)
                 multiplier = len(self.data.game_indices)/initialState.TOTAL_GAMES
+                last_date = max(self.data.game_indices)
                 for state in venues:
                     t1, t2, g_n = state
                     window_min = max(0, multiplier*g_n - window)
-                    window_max = min(max(self.data.game_indices), multiplier*g_n + window)
+                    window_max = min(last_date, multiplier*g_n + window)
                     ht = t1 if venues[state] else t2
-                    dates_domains[state] = [d for d in self.data.game_indices if (d >= window_min and d <= window_max and d in ht.home_dates)]
+                    first_game_in_window_idx = binary_search(ht.home_dates,window_min)
+                    dates_domain = []
+                    #no home games after window_min
+                    # this shouldn't happen
+                    if first_game_in_window_idx is None:
+                        dates_selected[state] = dates_domain
+                    else:
+                        #add all home dates in window to dates_domain
+                        for d in xrange(first_game_in_window_idx, len(ht.home_dates)):
+                            if d <= window_max:
+                                dates_domain.append(d)
+                            else:
+                                break
+                    #dates_domains[state] = [d for d in ht.home_dates if (d >= window_min and d <= window_max)]
+                    dates_domains[state] = dates_domain
                     dates_selected[state] = None
                 dateState = dom.Dates({initialState.domains: dates_domains, initialState.selected: dates_selected})
                 dates, dates_statesExplored = self.DFS(dateState)
@@ -172,7 +211,7 @@ class Scheduler(object):
 
 if __name__ == '__main__':
     #The 2 True's correspond to reading in Matches.json and Venues.json so you don't have to recalculate
-    sched = Scheduler(2015)
+    sched = Scheduler(2015,True,False)
     today = dg.datetime.datetime.today()
     new_sched = sched.create_schedule()
     fin = dg.datetime.datetime.today()

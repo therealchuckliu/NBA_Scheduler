@@ -62,6 +62,61 @@ def valid_venue(m, sk):
     home_games = {}
     away_games = {}
     num_games = {}
+    # NOTE: we are only concerned with t1 and t2 since those are the only teams that are
+    # affected by the selected game.
+    # Note, since we ordered when generating team pairs, t1 < t2. So if t1, t2 are both in a game,
+    # the order is (t1,t2), not (t2,t1)
+    t1, t2, gn = sk
+    for state in selected:
+        tx, ty, gnxy = state
+        if (t1 in [tx,ty] or t2 in [tx,ty]) and (selected[state] is not None):
+            home = selected[state]
+            
+            
+            if t1 == tx:
+                if t2 == ty:
+                    add(num_games, (t1, t2))
+                    add(away_games if home else home_games, t2)
+                add(home_games if home else away_games, t1)
+            elif t1 == ty:
+                add(away_games if home else home_games, t1)
+            
+            # t1 not in state
+            elif t2 == tx:
+                add(home_games if home else away_games, t2)
+            #t2 == ty
+            else:
+                add(away_games if home else home_games, t2)   
+      
+    # scheduled the required number of games between the two teams
+    # clear domain
+    if num_games[(t1,t2)] == total_games(m, t1, t2):
+        domains[(t1,t2)] = []
+        return True
+    
+    # add t1 and t2 to list if respectively if they have played enough home games or away games
+    enough_home_games_list = []
+    enough_away_games_list = []
+    for team in [t1,t2]:
+        if team in home_games and home_games[team] == (m.TOTAL_GAMES+1)/2:
+            enough_home_games_list.append(team)
+        if team in away_games and away_games[team] == (m.TOTAL_GAMES+1)/2:
+            enough_away_games_list.append(team)
+    # iterate over team pairs and remove home games for teams (t1 or t2) that have played enough
+    # home games or away games
+    for team_pair in domains:
+        tx, ty = team_pair
+        if tx in enough_home_games_list:
+            domains[team_pair] = [x for x in domains[team_pair] if not x]
+        elif ty in enough_home_games_list:
+            domains[team_pair] = [x for x in domains[team_pair] if x]
+        if tx in enough_away_games_list:
+            domains[team_pair] = [x for x in domains[team_pair] if x] 
+        elif ty in enough_away_games_list:
+            domains[team_pair] = [x for x in domains[team_pair] if not x]
+    return True
+    #old method below
+    '''
     for state in selected:
         if selected[state] is not None:
             t1, t2, g_n = state
@@ -69,7 +124,13 @@ def valid_venue(m, sk):
             add(home_games, t1 if home else t2)
             add(away_games, t2 if home else t1)
             add(num_games, (t1, t2))
-            
+    for state in num_games:
+        t1, t2 = state
+        #if all games scheduled
+        #remove the last domain element in case where t1 and t2 play odd number of games
+        #domain was initialized to size 2*(num_games+1)/2
+        if num_games[state] == total_games(m, t1, t2):
+            domains[state] = []        
     #check if home/away game limits have been reached, if so remove from domains
     for team in home_games:
         if home_games[team] == (m.TOTAL_GAMES+1)/2:
@@ -87,14 +148,9 @@ def valid_venue(m, sk):
                     domains[state] = [x for x in domains[state] if not x]
                 elif t1 is team:
                     domains[state] = [x for x in domains[state] if x]
-    for state in num_games:
-        t1, t2 = state
-        #remove the last domain element in case where t1 and t2 play odd number of games
-        #domain was initialized to size 2*(num_games+1)/2
-        if num_games[state] == total_games(m, t1, t2):
-            domains[state] = []
+    
     return True
-            
+    '''        
 #set opponent's matchup and update their domain
 def valid_matchup(m, sk):
     team, game_num = sk

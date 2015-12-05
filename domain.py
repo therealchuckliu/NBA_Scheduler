@@ -149,6 +149,7 @@ class Venues(TGBase):
                     min_gn = gn
                     min_state = state      
         return min_state
+    
     def min_key(self):
         teams_selected = {}
         for state in self.states[self.selected]:
@@ -172,13 +173,13 @@ class Venues(TGBase):
         #choose the team with the most selected home/away venues, i.e. least domain size remaining
         min_k = sorted(teams_selected.keys(), key=lambda x: -teams_selected[x])[0]
         best_k = None
-        best_len = float("inf")
+        best_len = float("-inf")
         #we have the team we want to next choose a venue for, but domains are pairs of teams, 
-        #so choose the pair with the remaining least domain size
+        #so choose the pair with the largest remaining domain size
         for k in self.states[self.domains]:
             t1, t2 = k
             l = len(self.states[self.domains][k])
-            if (t1 is min_k or t2 is min_k) and  l > 0 and l < best_len:
+            if (t1 is min_k or t2 is min_k) and  l > 0 and l > best_len:
                 best_len = l
                 best_k = k
         return (best_k, self.min_key_helper(best_k)) if best_k is not None else (None, None)     
