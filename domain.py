@@ -183,14 +183,17 @@ class Venues(TGBase):
             for k in self.states[self.domains]:
                 if len(self.states[self.domains][k]) > 0 and constraint.total_games(self, k[0], k[1])%2==0:
                     return (k, self.min_key_helper(k))
+        elif len(teams_selected_even) == 0 and len(teams_selected_odd) == 0:
+            for k in self.states[self.domains]:
+                if len(self.states[self.domains][k]) > 0 and constraint.total_games(self, k[0], k[1])%2!=0:
+                    return (k, self.min_key_helper(k))
                     
         #choose the team with the most selected home/away venues, i.e. least domain size remaining
         min_k = None
-        print len(teams_selected_even)
         if len(teams_selected_even) > 0:
-            min_k = sorted(teams_selected_even.keys(), key=lambda x: -teams_selected[x])[0]
+            min_k = sorted(teams_selected_even.keys(), key=lambda x: -teams_selected_even[x])[0]
         elif len(teams_selected_odd) > 0:
-            min_k = sorted(teams_selected_odd.keys(), key=lambda x: -teams_selected[x])[0]
+            min_k = sorted(teams_selected_odd.keys(), key=lambda x: -teams_selected_odd[x])[0]
         else:
             return (None, None)
         best_k_even = None
