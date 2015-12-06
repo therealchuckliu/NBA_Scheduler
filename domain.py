@@ -151,61 +151,109 @@ class Venues(TGBase):
         return min_state
     
     def min_key(self):
-        teams_selected = {}
+        '''
+            Goal is to first assign the games for teams with opponents they have an
+            even number of games with. Then once they are all assigned we try to fit
+            the remaining games, there's a little more flexibility there as it's not strict
+            split
+        '''
+        teams_selected_even = {}
+        teams_selected_odd = {}
+        #calculate number of games against even-gamed opponents
+        total_even_games = 4*self.DIVISIONAL_GAMES + 6*self.CONF_OPPONENTS_GAMES + 15*self.INTERCONF_GAMES
+        total_odd_games = self.TOTAL_GAMES - total_even_games
+        begin_search = True
         for state in self.states[self.selected]:
             if self.states[self.selected][state] is not None:
+                begin_search = False
                 t1, t2, g_n = state
+                total_games = total_even_games if constraint.total_games(self, t1, t2)%2==0 else total_odd_games
+                teams_selected = teams_selected_even if constraint.total_games(self, t1, t2)%2==0 else teams_selected_odd
                 constraint.add(teams_selected, t1)
                 constraint.add(teams_selected, t2)
-                if teams_selected[t1] == self.TOTAL_GAMES:
+                if teams_selected[t1] == total_games:
                     teams_selected.pop(t1, None)
-                if teams_selected[t2] == self.TOTAL_GAMES:
+                if teams_selected[t2] == total_games:
                     teams_selected.pop(t2, None)
         
-        #teams_selected stores how many teams have selected their home/away for games
+        #teams_selected_* stores how many teams have selected their home/away for games
         #removing those that have had all their games scheduled with home/away
         #if it's empty then no team has had a selected home/away yet
-        if len(teams_selected) == 0:
+        if begin_search:
             for k in self.states[self.domains]:
-                if len(self.states[self.domains][k]) > 0:
+                if len(self.states[self.domains][k]) > 0 and constraint.total_games(self, k[0], k[1])%2==0:
                     return (k, self.min_key_helper(k))
                     
         #choose the team with the most selected home/away venues, i.e. least domain size remaining
-        min_k = sorted(teams_selected.keys(), key=lambda x: -teams_selected[x])[0]
-        best_k = None
-        best_len = float("-inf")
+        min_k = None
+        print len(teams_selected_even)
+        if len(teams_selected_even) > 0:
+            min_k = sorted(teams_selected_even.keys(), key=lambda x: -teams_selected[x])[0]
+        elif len(teams_selected_odd) > 0:
+            min_k = sorted(teams_selected_odd.keys(), key=lambda x: -teams_selected[x])[0]
+        else:
+            return (None, None)
+        best_k_even = None
+        best_len_even = float("-inf")
+        best_k_odd = None
+        best_len_odd = float("-inf")
         #we have the team we want to next choose a venue for, but domains are pairs of teams, 
-        #so choose the pair with the largest remaining domain size
+        #so choose the pair with the largest remaining games to choose from
         for k in self.states[self.domains]:
             t1, t2 = k
+            #store best_k for opponents u play even/odd # of games w/
             l = len(self.states[self.domains][k])
-            if (t1 is min_k or t2 is min_k) and  l > 0 and l > best_len:
-                best_len = l
-                best_k = k
-        return (best_k, self.min_key_helper(best_k)) if best_k is not None else (None, None)     
-
-    def successorDomains(self, domain_class, constraint_func):
-        domains = []
-        dk, sk = self.min_key()
-        if dk is not None and sk is not None:
-            #iterate through domain and add to list but keep track of ones we've already done
-            #because some domains are repeated elements
-            # Note for venues, dom_elems are either True or False,
-            # so we can stop traversing self.ordered_domain(dk, sk) if we find both True and False
-            added_elems = set()
-            for dom_elem in self.ordered_domain(dk, sk):
-                if dom_elem not in added_elems:
-                    new_obj = self.copy_states(domain_class, dk, sk, dom_elem)
-                    # all this constraint does is remove domains
-                    if constraint_func(new_obj, sk):
-                        domains.append(new_obj)
-                    added_elems.add(dom_elem)
-                    if len(added_elems) == 2:
-                        # quit early if we have already added the only possible next states
-                        return domains
-            return domains
-        return None
-    
+            if t1 is min_k or t2 is min_k:
+                if constraint.total_games(self, t1, t2)%2 == 0:
+                    if l > 0 and l > best_len_even:
+                        best_len_even = l
+                        best_k_even = k
+                else:
+                    if l > 0 and l > best_len_odd:
+                        best_len_odd = l
+                        best_k_odd = k
+        #want to first assign games with teams you play even # of games with
+        if best_k_even is not None:
+            return (best_k_even, self.min_key_helper(best_k_even))
+        elif best_k_odd is not None:
+            return (best_k_odd, self.min_key_helper(best_k_odd))
+        else:
+            return (None, None)
+        
+    def ordered_domain(self, dk, sk):
+        t1, t2 = dk
+        home_games, away_games, num_games = constraint.home_away_num_game_dicts(sk, self.states[self.selected])
+        if dk not in num_games or num_games[dk] < constraint.total_games(self, t1, t2):
+            total = (self.TOTAL_GAMES + 1)/2
+            t1_home = home_games[t1] if t1 in home_games else 0
+            t1_away = away_games[t1] if t1 in away_games else 0
+            t2_home = home_games[t2] if t2 in home_games else 0
+            t2_away = away_games[t2] if t2 in away_games else 0
+            '''
+                If there's enough of home or away games only try the other
+                Check that it's in the domain, the opponents where you play an
+                odd number of games against can tilt the number of home/away games
+                on inconsistent states
+            '''
+            if t1_home == total or t2_away == total:
+                return [False] if False in self.states[self.domains][dk] else []
+            elif t1_away == total or t2_home == total:
+                return [True] if True in self.states[self.domains][dk] else []
+            '''
+                We want to try the T/F that there's more of in the domain first
+                Check for reverse because DFS takes states in reverse order
+            '''
+            T_num = len([x for x in self.states[self.domains][dk] if x])
+            F_num = len(self.states[self.domains][dk]) - T_num
+            return self.order_TF(dk, T_num < F_num)        
+        else:
+            return []
+            
+    def order_TF(self, dk, t_first):
+        domain = []
+        if t_first in self.states[self.domains][dk]: domain.append(t_first)
+        if (not t_first) in self.states[self.domains][dk]: domain.append(not t_first)
+        return domain
     
 class Dates(TGBase):
     def successors(self):

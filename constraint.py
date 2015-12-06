@@ -54,11 +54,9 @@ def valid_date(m, sk):
             domains[state][:] = []
     
     return True
-        
-#check that the total number of home games is TOTAL_GAMES/2
-def valid_venue(m, sk):
-    selected = m.states[m.selected]
-    domains = m.states[m.domains]
+    
+def home_away_num_game_dicts(sk, selected):
+    t1, t2, gn = sk
     home_games = {}
     away_games = {}
     num_games = {}
@@ -66,13 +64,10 @@ def valid_venue(m, sk):
     # affected by the selected game.
     # Note, since we ordered when generating team pairs, t1 < t2. So if t1, t2 are both in a game,
     # the order is (t1,t2), not (t2,t1)
-    t1, t2, gn = sk
     for state in selected:
         tx, ty, gnxy = state
         if (t1 in [tx,ty] or t2 in [tx,ty]) and (selected[state] is not None):
             home = selected[state]
-            
-            
             if t1 == tx:
                 if t2 == ty:
                     add(num_games, (t1, t2))
@@ -86,7 +81,15 @@ def valid_venue(m, sk):
                 add(home_games if home else away_games, t2)
             #t2 == ty
             else:
-                add(away_games if home else home_games, t2)   
+                add(away_games if home else home_games, t2)
+    return (home_games, away_games, num_games)
+        
+#check that the total number of home games is TOTAL_GAMES/2
+def valid_venue(m, sk):
+    selected = m.states[m.selected]
+    domains = m.states[m.domains]
+    t1, t2, gn = sk
+    home_games, away_games, num_games = home_away_num_game_dicts(sk, selected)
       
     # scheduled the required number of games between the two teams
     # clear domain
