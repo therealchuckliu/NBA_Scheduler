@@ -245,10 +245,10 @@ class Venues(TGBase):
                 odd number of games against can tilt the number of home/away games
                 on inconsistent states
             '''
-            if t1_home == total or t2_away == total:
-                return self.domain_dates(False, sk)
-            elif t1_away == total or t2_home == total:
-                return self.domain_dates(True, sk)
+            if t1_home == total or t2_away == total and False in self.states[self.domains][dk]:
+                return self.domain_dates(False, sk, True)
+            elif t1_away == total or t2_home == total and True in self.states[self.domains][dk]:
+                return self.domain_dates(True, sk, True)
             '''
                 We want to try the T/F that there's more of in the domain first
                 Check for reverse because DFS takes states in reverse order
@@ -260,19 +260,34 @@ class Venues(TGBase):
             return []
             
     def order_TF(self, dk, t_first, sk):
+        true_dates = []
+        false_dates = []
         dates = []
-        domain = []
-        if t_first in self.states[self.domains][dk]: domain.append(t_first)
-        if (not t_first) in self.states[self.domains][dk]: domain.append(not t_first)
-        for t_f in domain:
-            dates += self.domain_dates(t_f, sk)
-        dates.sort(key=lambda x: -(x[0] - sk[2]*2))
+        if t_first in self.states[self.domains][dk]: true_dates = self.domain_dates(t_first, sk)
+        if (not t_first) in self.states[self.domains][dk]: false_dates = self.domain_dates(not t_first, sk)
+        
+        true_dates.sort(key=lambda x: -abs(x[0] - (sk[2]-1)*2))
+        false_dates.sort(key=lambda x: -abs(x[0] - (sk[2]-1)*2))
+        for i in range(max(len(true_dates), len(false_dates))-1, -1, -1):
+            if i >= len(true_dates):
+                dates = [false_dates[i]] + dates
+            elif i >= len(false_dates):
+                dates = [true_dates[i]] + dates
+            else:
+                if t_first:
+                    dates = [false_dates[i]] + dates
+                    dates = [true_dates[i]] + dates
+                else:
+                    dates = [true_dates[i]] + dates
+                    dates = [false_dates[i]] + dates
         return dates
         
-    def domain_dates(self, t_f, sk):
+    def domain_dates(self, t_f, sk, sort = False):
         dates = []
         for i in range(len(self.states[self.master_dates][(sk, t_f)])-1, -1, -1):
             dates.append((self.states[self.master_dates][(sk, t_f)][i], t_f))
+        if sort:
+            dates.sort(key=lambda x: -abs(x[0] - (sk[2]-1)*2))
         return dates
         
     def copy_states(self, domain_class, dk, sk, dom_elem):
