@@ -245,9 +245,9 @@ class Venues(TGBase):
                 odd number of games against can tilt the number of home/away games
                 on inconsistent states
             '''
-            if t1_home == total or t2_away == total and False in self.states[self.domains][dk]:
+            if (t1_home == total or t2_away == total) and False in self.states[self.domains][dk]:
                 return self.domain_dates(False, sk, True)
-            elif t1_away == total or t2_home == total and True in self.states[self.domains][dk]:
+            elif (t1_away == total or t2_home == total) and True in self.states[self.domains][dk]:
                 return self.domain_dates(True, sk, True)
             '''
                 We want to try the T/F that there's more of in the domain first
@@ -257,11 +257,8 @@ class Venues(TGBase):
             F_num = len(self.states[self.domains][dk]) - T_num
             if (T_num == F_num):
                 t_first = random.choice([True,False])
-                print t_first
             else:
                 t_first = T_num < F_num
-            print "T num: {}".format(T_num)
-            print "F num: {}".format(F_num)
             return self.order_TF(dk, t_first, sk)
             #return self.order_TF(dk, T_num < F_num, sk)
         else:
@@ -276,26 +273,22 @@ class Venues(TGBase):
 
         true_dates.sort(key=lambda x: -abs(x[0] - (sk[2]-1)*2))
         false_dates.sort(key=lambda x: -abs(x[0] - (sk[2]-1)*2))
-        for i in range(max(len(true_dates), len(false_dates))-1, -1, -1):
-            if i >= len(true_dates):
-                dates = [false_dates[i]] + dates
-            elif i >= len(false_dates):
-                dates = [true_dates[i]] + dates
+        for i in range(max(len(true_dates), len(false_dates))):
+            true_index = len(true_dates) - 1 - i
+            false_index = len(false_dates) - 1 - i
+            if true_index < 0:
+                dates = [false_dates[false_index]] + dates
+            elif false_index < 0:
+                dates = [true_dates[true_index]] + dates
             else:
-                if t_first:
-                    dates = [false_dates[i]] + dates
-                    dates = [true_dates[i]] + dates
-                else:
-                    dates = [true_dates[i]] + dates
-                    dates = [false_dates[i]] + dates
-        print t_first
-        print "dates: {}".format(dates)
+                dates = [false_dates[false_index]] + dates
+                dates = [true_dates[true_index]] + dates
         return dates
 
     def domain_dates(self, t_f, sk, sort = False):
         dates = []
-        for i in range(len(self.states[self.master_dates][(sk, t_f)])-1, -1, -1):
-            dates.append((self.states[self.master_dates][(sk, t_f)][i], t_f))
+        for i in self.states[self.master_dates][(sk, t_f)]:
+            dates.append((i, t_f))
         if sort:
             dates.sort(key=lambda x: -abs(x[0] - (sk[2]-1)*2))
         return dates
