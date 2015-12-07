@@ -24,7 +24,7 @@ def read_output(league, filename):
     with open(filename + '.json', 'r') as fp:
         domains = list2map(league, json.load(fp))
     return domains
-    
+
 def map2list(m):
     l = []
     for k,v in m.iteritems():
@@ -37,7 +37,7 @@ def map2list(m):
                 new_k.append(t)
         l.append({'key':new_k, 'value': new_v})
     return l
-    
+
 def list2map(league, l):
     m = {}
     for kv in l:
@@ -73,18 +73,24 @@ def binary_search(A,x,lo=0, hi=None):
     else:
         # x > mid_val
         return binary_search(A,x,mid+1, hi)
-        
-    
-def date_ranges(multiplier, team, game_num):
+
+
+def date_ranges(multiplier, team, game_num,last_game_idx):
     window = 10
+    #test_dates
+    #for i in range(max(0,multiplier*game_num-window), min(multiplier*game_num+window+1, last_game_idx+1)):
+    #home_dates
     dates = []
     for i in range(multiplier*game_num-window, multiplier*game_num+window+1):
+    #for i in range(max(0,multiplier*game_num-window), min(multiplier*game_num+window+1, last_game_idx+1)):
         if i in team.home_dates:
+
             dates.append(i)
+    print "team: {}, game_num: {}, dates: {}".format(team.name, game_num, dates)
     return dates
 
 class Scheduler(object):
-    
+
     def __init__(self, year, matchups_json = False, venues_dates_json = False):
         self.data = dg.DataGen(year)
         self.matchups_json = matchups_json
@@ -99,9 +105,9 @@ class Scheduler(object):
         else:
             matchups, matchups_statesExplored = self.DFS(initialState)
             print "{}: Matchups, {} states explored, {}".format(dg.datetime.datetime.today(), matchups_statesExplored, matchups is not None)
-        
+
         if matchups is not None:
-            write_output(matchups, "Matchups")        
+            write_output(matchups, "Matchups")
             #now we have our matchups which is a dict of (team, game_num) -> [opponent]
             #we next want to assign home/away so we create a map of the form:
             #(team1, team2, game_num) -> [True/False]
@@ -124,15 +130,15 @@ class Scheduler(object):
                     dk = (t, o) if t.name < o.name else (o, t)
                     if sk not in venues_selected:
                         venues_selected[sk] = None
-                        dates_true = date_ranges(2, dk[0], g_n)
-                        dates_false = date_ranges(2, dk[1], g_n)
+                        dates_true = date_ranges(2, dk[0], g_n,self.data.game_indices[-1])
+                        dates_false = date_ranges(2, dk[1], g_n,self.data.game_indices[-1])
                         master_dates[(sk,True)] = dates_true
                         master_dates[(sk,False)] = dates_false
                         venues_domains[dk] = [True, False] * ((dom.constraint.total_games(initialState, t, o) + 1)/2)
                 venueState = dom.Venues({initialState.domains: venues_domains, initialState.selected: venues_selected, initialState.master_dates: master_dates})
                 venues_dates, venues_statesExplored = self.DFS(venueState)
                 print "{}: Venues, {} states explored, {}".format(dg.datetime.datetime.today(), venues_statesExplored, venues_dates is not None)
-                          
+
                 if venues_dates is not None:
                     venues = {}
                     dates = {}
@@ -148,19 +154,23 @@ class Scheduler(object):
                         sched_map[(t2, g_n)] = (t1, not home, date)
                         venues[state] = home
                         dates[state] = date
-                        
+
                     write_output(venues, "Venues")
                     write_output(dates, "Dates")
                     return sched_map
-                    
+
         return None
-        
+
     def DFS(self, initialState):
         frontier = [initialState]
         statesExplored = 0
-        
+
         while frontier:
             state = frontier.pop()
+            current_selected = []
+            for (k,v) in state.states[state.selected].items():
+                if v is not None:
+                    current_selected.append((k,v))
             statesExplored += 1
             if statesExplored % 1000 == 0:
                 num_selected = 0
@@ -168,7 +178,7 @@ class Scheduler(object):
                     if state.states[state.selected][s] is not None:
                         num_selected += 1
                 print "{}: {}, {}, {}".format(dg.datetime.datetime.today(), statesExplored, len(frontier), num_selected)
-                
+
             if state.complete():
                 return (state.states[state.selected], statesExplored)
             else:
@@ -176,8 +186,8 @@ class Scheduler(object):
                 if successors is not None:
                     frontier.extend(successors)
         return (None, statesExplored)
-        
-                   
+
+
     #methods for printing schedules
     def str_schedule(self, schedule, games = 82, teams = []):
         output = ""
@@ -189,7 +199,7 @@ class Scheduler(object):
                 dom_elem = schedule[(t, i)]
                 output += self.str_game(t, dom_elem) + "\n"
         return output
-                
+
     def str_game(self, team, dom_elem):
         opponent, home, dateindex = dom_elem
         return "{},{},{}".format(self.data.i2d[dateindex], team.name if home else opponent.name, opponent.name if home else team.name)
