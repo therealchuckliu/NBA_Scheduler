@@ -11,7 +11,7 @@ Domain: (Opposing Team, Home/Away (TRUE/FALSE), DateIndex)
 import constraint
 import random
 
-class TGBase(object):    
+class TGBase(object):
     def __init__(self, states = None, league = None, all_dates = None, master_dates = None):
         self.DIVISIONAL_GAMES = 4
         self.CONF_OPPONENTS_GAMES = 4
@@ -37,10 +37,10 @@ class TGBase(object):
                     selected[(team, i)] = None
             self.states[self.domains] = domains
             self.states[self.selected] = selected
-            
+
         if master_dates is not None:
             self.selected[self.master_dates] = master_dates
-            
+
 
     def min_key(self):
         min_len = float("inf")
@@ -53,10 +53,10 @@ class TGBase(object):
         if min_k is None:
             return (None, None)
         return (min_k, self.min_key_helper(min_k))
-        
+
     def min_key_helper(self, min_k):
         raise NotImplementedError('Base class, use a super class')
-    
+
     def successorDomains(self, domain_class, constraint_func):
         domains = []
         dk, sk = self.min_key()
@@ -69,31 +69,31 @@ class TGBase(object):
                     new_obj = self.copy_states(domain_class, dk, sk, dom_elem)
                     if constraint_func(new_obj, sk):
                         domains.append(new_obj)
-                    added_elems.add(dom_elem) 
+                    added_elems.add(dom_elem)
             return domains
         return None
-    
+
     def ordered_domain(self, dk, sk):
         return self.states[self.domains][dk]
-        
+
     def copy_states(self, domain_class, dk, sk, dom_elem):
         new_states = self.copy()
         new_states[self.domains][dk].remove(dom_elem)
         new_states[self.selected][sk] = dom_elem
-        new_obj = domain_class(new_states)    
+        new_obj = domain_class(new_states)
         return new_obj
-        
+
     def successors(self):
         raise NotImplementedError('Base class, use a super class')
-        
+
     def complete(self):
         for k in self.states[self.selected]:
             if self.states[self.selected][k] is None:
                 return False
         return True
-     
+
     #replace deepcopy because it's too slow
-    #only need to copy new arrays, not objects within    
+    #only need to copy new arrays, not objects within
     def copy(self):
         domains = {}
         selected = {}
@@ -105,7 +105,7 @@ class TGBase(object):
         for k in self.states[self.master_dates]:
             master_dates[k] = self.states[self.master_dates][k][:]
         return {self.domains:domains, self.selected:selected, self.master_dates:master_dates}
-        
+
 class Matchups(TGBase):
     def successors(self):
         return self.successorDomains(Matchups, constraint.valid_matchup)
@@ -141,7 +141,7 @@ class Matchups(TGBase):
         #order domain elements from lowest to highest, when this gets added
         #to the states list, it will be read backwards so highest to lowest
         return sorted(domain_dict.keys(), key= lambda x: domain_dict[x])
-        
+
 class Venues(TGBase):
     def successors(self):
         return self.successorDomains(Venues, constraint.valid_venue)
@@ -156,7 +156,7 @@ class Venues(TGBase):
                     min_gn = gn
                     min_state = state
         return min_state
-    
+
     def min_key(self):
         '''
             Goal is to first assign the games for teams with opponents they have an
@@ -182,7 +182,7 @@ class Venues(TGBase):
                     teams_selected.pop(t1, None)
                 if teams_selected[t2] == total_games:
                     teams_selected.pop(t2, None)
-        
+
         #teams_selected_* stores how many teams have selected their home/away for games
         #removing those that have had all their games scheduled with home/away
         #if it's empty then no team has had a selected home/away yet
@@ -194,7 +194,7 @@ class Venues(TGBase):
             for k in self.states[self.domains]:
                 if len(self.states[self.domains][k]) > 0 and constraint.total_games(self, k[0], k[1])%2!=0:
                     return (k, self.min_key_helper(k))
-                    
+
         #choose the team with the most selected home/away venues, i.e. least domain size remaining
         min_k = None
         if len(teams_selected_even) > 0:
@@ -207,7 +207,7 @@ class Venues(TGBase):
         best_len_even = float("-inf")
         best_k_odd = None
         best_len_odd = float("-inf")
-        #we have the team we want to next choose a venue for, but domains are pairs of teams, 
+        #we have the team we want to next choose a venue for, but domains are pairs of teams,
         #so choose the pair with the largest remaining games to choose from
         for k in self.states[self.domains]:
             t1, t2 = k
@@ -229,7 +229,7 @@ class Venues(TGBase):
             return (best_k_odd, self.min_key_helper(best_k_odd))
         else:
             return (None, None)
-        
+
     def ordered_domain(self, dk, sk):
         t1, t2 = dk
         home_games, away_games, num_games = constraint.home_away_num_game_dicts(sk, self.states[self.selected])
@@ -255,17 +255,25 @@ class Venues(TGBase):
             '''
             T_num = len([x for x in self.states[self.domains][dk] if x])
             F_num = len(self.states[self.domains][dk]) - T_num
-            return self.order_TF(dk, T_num < F_num, sk)        
+            if (T_num == F_num):
+                t_first = random.choice([True,False])
+                print t_first
+            else:
+                t_first = T_num < F_num
+            print "T num: {}".format(T_num)
+            print "F num: {}".format(F_num)
+            return self.order_TF(dk, t_first, sk)
+            #return self.order_TF(dk, T_num < F_num, sk)
         else:
             return []
-            
+
     def order_TF(self, dk, t_first, sk):
         true_dates = []
         false_dates = []
         dates = []
         if t_first in self.states[self.domains][dk]: true_dates = self.domain_dates(t_first, sk)
         if (not t_first) in self.states[self.domains][dk]: false_dates = self.domain_dates(not t_first, sk)
-        
+
         true_dates.sort(key=lambda x: -abs(x[0] - (sk[2]-1)*2))
         false_dates.sort(key=lambda x: -abs(x[0] - (sk[2]-1)*2))
         for i in range(max(len(true_dates), len(false_dates))-1, -1, -1):
@@ -280,8 +288,10 @@ class Venues(TGBase):
                 else:
                     dates = [true_dates[i]] + dates
                     dates = [false_dates[i]] + dates
+        print t_first
+        print "dates: {}".format(dates)
         return dates
-        
+
     def domain_dates(self, t_f, sk, sort = False):
         dates = []
         for i in range(len(self.states[self.master_dates][(sk, t_f)])-1, -1, -1):
@@ -289,7 +299,7 @@ class Venues(TGBase):
         if sort:
             dates.sort(key=lambda x: -abs(x[0] - (sk[2]-1)*2))
         return dates
-        
+
     def copy_states(self, domain_class, dk, sk, dom_elem):
         date, t_f = dom_elem
         new_states = self.copy()
@@ -308,14 +318,13 @@ class Venues(TGBase):
                 if g_nx > g_n:
                     new_states[self.master_dates][(selected_state, True)][:] = [d for d in new_states[self.master_dates][(selected_state, True)] if d > date]
                     new_states[self.master_dates][(selected_state, False)][:] = [d for d in new_states[self.master_dates][(selected_state, False)] if d > date]
-            
-        new_obj = domain_class(new_states)    
+
+        new_obj = domain_class(new_states)
         return new_obj
-    
+
 class Dates(TGBase):
     def successors(self):
         return self.successorDomains(Dates, constraint.valid_date)
     def min_key_helper(self, min_k):
         return min_k
-        
-        
+
