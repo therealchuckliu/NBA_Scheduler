@@ -12,7 +12,7 @@ import constraint
 import random
 
 class TGBase(object):    
-    def __init__(self, states = None, league = None, all_dates = None):
+    def __init__(self, states = None, league = None, all_dates = None, master_dates = None):
         self.DIVISIONAL_GAMES = 4
         self.CONF_OPPONENTS_GAMES = 4
         self.REMAINING_CONF_GAMES = 3
@@ -21,6 +21,7 @@ class TGBase(object):
         self.states = {} if states is None else states
         self.domains = "domains"
         self.selected = "selected"
+        self.master_dates = "master_dates"
         if len(self.states) == 0:
             domains = {}
             selected = {}
@@ -36,6 +37,9 @@ class TGBase(object):
                     selected[(team, i)] = None
             self.states[self.domains] = domains
             self.states[self.selected] = selected
+            
+        if master_dates is not None:
+            self.selected[self.master_dates] = master_dates
             
 
     def min_key(self):
@@ -93,11 +97,14 @@ class TGBase(object):
     def copy(self):
         domains = {}
         selected = {}
+        master_dates = {}
         for k in self.states[self.domains]:
             domains[k] = self.states[self.domains][k][:]
         for k in self.states[self.selected]:
-            selected[k] = self.states[self.selected][k]
-        return {self.domains:domains, self.selected:selected}
+            selected[k] = self.states[self.selected][k][:] if self.states[self.selected][k] is not None else None
+        for k in self.states[self.master_dates]:
+            master_dates[k] = self.states[self.master_dates][k][:]
+        return {self.domains:domains, self.selected:selected, self.master_dates:master_dates}
         
 class Matchups(TGBase):
     def successors(self):
@@ -147,7 +154,7 @@ class Venues(TGBase):
             t1, t2, gn = state
             if self.states[self.selected][state] is None and t1 is tx and t2 is ty and gn < min_gn:
                     min_gn = gn
-                    min_state = state      
+                    min_state = state
         return min_state
     
     def min_key(self):
@@ -239,24 +246,56 @@ class Venues(TGBase):
                 on inconsistent states
             '''
             if t1_home == total or t2_away == total:
-                return [False] if False in self.states[self.domains][dk] else []
+                return self.domain_dates(False, sk)
             elif t1_away == total or t2_home == total:
-                return [True] if True in self.states[self.domains][dk] else []
+                return self.domain_dates(True, sk)
             '''
                 We want to try the T/F that there's more of in the domain first
                 Check for reverse because DFS takes states in reverse order
             '''
             T_num = len([x for x in self.states[self.domains][dk] if x])
             F_num = len(self.states[self.domains][dk]) - T_num
-            return self.order_TF(dk, T_num < F_num)        
+            return self.order_TF(dk, T_num < F_num, sk)        
         else:
             return []
             
-    def order_TF(self, dk, t_first):
+    def order_TF(self, dk, t_first, sk):
+        dates = []
         domain = []
         if t_first in self.states[self.domains][dk]: domain.append(t_first)
         if (not t_first) in self.states[self.domains][dk]: domain.append(not t_first)
-        return domain
+        for t_f in domain:
+            dates += self.domain_dates(t_f, sk)
+        dates.sort(key=lambda x: -(x[0] - sk[2]*2))
+        return dates
+        
+    def domain_dates(self, t_f, sk):
+        dates = []
+        for i in range(len(self.states[self.master_dates][(sk, t_f)])-1, -1, -1):
+            dates.append((self.states[self.master_dates][(sk, t_f)][i], t_f))
+        return dates
+        
+    def copy_states(self, domain_class, dk, sk, dom_elem):
+        date, t_f = dom_elem
+        new_states = self.copy()
+        new_states[self.domains][dk].remove(t_f)
+        new_states[self.selected][sk] = dom_elem
+        #pruning master dates
+        t, o, g_n = sk
+        new_states[self.master_dates][(sk, t_f)][:] = [date]
+        new_states[self.master_dates][(sk, not t_f)][:] = []
+        for selected_state in self.states[self.selected]:
+            tx, ox, g_nx = selected_state
+            if (tx is t or ox is t) or (tx is o or ox is o):
+                if g_nx < g_n:
+                    new_states[self.master_dates][(selected_state, True)][:] = [d for d in new_states[self.master_dates][(selected_state, True)] if d < date]
+                    new_states[self.master_dates][(selected_state, False)][:] = [d for d in new_states[self.master_dates][(selected_state, False)] if d < date]
+                if g_nx > g_n:
+                    new_states[self.master_dates][(selected_state, True)][:] = [d for d in new_states[self.master_dates][(selected_state, True)] if d > date]
+                    new_states[self.master_dates][(selected_state, False)][:] = [d for d in new_states[self.master_dates][(selected_state, False)] if d > date]
+            
+        new_obj = domain_class(new_states)    
+        return new_obj
     
 class Dates(TGBase):
     def successors(self):

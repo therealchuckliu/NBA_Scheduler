@@ -73,13 +73,22 @@ def binary_search(A,x,lo=0, hi=None):
     else:
         # x > mid_val
         return binary_search(A,x,mid+1, hi)
+        
+    
+def date_ranges(multiplier, team, game_num):
+    window = 10
+    dates = []
+    for i in range(multiplier*game_num-window, multiplier*game_num+window+1):
+        if i in team.home_dates:
+            dates.append(i)
+    return dates
 
 class Scheduler(object):
     
-    def __init__(self, year, matchups_json = False, venues_json = False):
+    def __init__(self, year, matchups_json = False, venues_dates_json = False):
         self.data = dg.DataGen(year)
         self.matchups_json = matchups_json
-        self.venues_json = venues_json
+        self.venues_dates_json = venues_dates_json
 
     def create_schedule(self):
         print "{}: Starting".format(dg.datetime.datetime.today())
@@ -98,12 +107,16 @@ class Scheduler(object):
             #(team1, team2, game_num) -> [True/False]
             #where True indicates it's played at team1's venue
             #also team1 < team2 alphabetically
-            venues = None
-            if self.venues_json:
+            venues_dates = None
+            if self.venues_dates_json:
                 venues = read_output(self.data.league, "Venues")
+                dates = read_output(self.data.league, "Dates")
+                for state in venues:
+                    venues_dates[state] = (dates[state], venues[state])
             else:
                 venues_domains = {}
                 venues_selected = {}
+                master_dates = {}
                 for state in matchups:
                     t, g_n = state
                     o = matchups[state]
@@ -111,61 +124,33 @@ class Scheduler(object):
                     dk = (t, o) if t.name < o.name else (o, t)
                     if sk not in venues_selected:
                         venues_selected[sk] = None
+                        dates_true = date_ranges(2, dk[0], g_n)
+                        dates_false = date_ranges(2, dk[1], g_n)
+                        master_dates[(sk,True)] = dates_true
+                        master_dates[(sk,False)] = dates_false
                         venues_domains[dk] = [True, False] * ((dom.constraint.total_games(initialState, t, o) + 1)/2)
-                venueState = dom.Venues({initialState.domains: venues_domains, initialState.selected: venues_selected})
-                venues, venues_statesExplored = self.DFS(venueState)
-                print "{}: Venues, {} states explored, {}".format(dg.datetime.datetime.today(), venues_statesExplored, venues is not None)
-            
-            if venues is not None:
-                #now we have our venues which is a dict of (team1, team2, game_num) -> True/False
-                #we next want to assign dates to play so we create a map of the form:
-                #(team1, team2, game_num) -> [d1, d2, d3, ...]
-                #data.game_indices has around 160 dates for 82 games, so we should minimize the
-                #domains to be roughly 2*game_num +/- window dates
-                write_output(venues, "Venues")
-                window = 10
-                dates_domains = {}
-                dates_selected = {}
-                #print len(self.data.game_indices)
-                multiplier = len(self.data.game_indices)/initialState.TOTAL_GAMES
-                last_date = max(self.data.game_indices)
-                for state in venues:
-                    t1, t2, g_n = state
-                    window_min = max(0, multiplier*g_n - window)
-                    window_max = min(last_date, multiplier*g_n + window)
-                    ht = t1 if venues[state] else t2
-                    first_game_in_window_idx = binary_search(ht.home_dates,window_min)
-                    dates_domain = []
-                    #no home games after window_min
-                    # this shouldn't happen
-                    if first_game_in_window_idx is None:
-                        dates_selected[state] = dates_domain
-                    else:
-                        #add all home dates in window to dates_domain
-                        for d in xrange(first_game_in_window_idx, len(ht.home_dates)):
-                            if d <= window_max:
-                                dates_domain.append(d)
-                            else:
-                                break
-                    #dates_domains[state] = [d for d in ht.home_dates if (d >= window_min and d <= window_max)]
-                    dates_domains[state] = dates_domain
-                    dates_selected[state] = None
-                dateState = dom.Dates({initialState.domains: dates_domains, initialState.selected: dates_selected})
-                dates, dates_statesExplored = self.DFS(dateState)
-                print "{}: Dates, {} states explored, {}".format(dg.datetime.datetime.today(), dates_statesExplored, dates is not None)
-                
-                if dates is not None:
-                    write_output(dates, "Dates")
+                venueState = dom.Venues({initialState.domains: venues_domains, initialState.selected: venues_selected, initialState.master_dates: master_dates})
+                venues_dates, venues_statesExplored = self.DFS(venueState)
+                print "{}: Venues, {} states explored, {}".format(dg.datetime.datetime.today(), venues_statesExplored, venues_dates is not None)
+                          
+                if venues_dates is not None:
+                    venues = {}
+                    dates = {}
+                    #write_output(venu, "Dates")
                     #create a master map of everything of the form:
                     #(team, game_num) -> (opponent, home, dateindex)
                     #where home is true if played at team's venue
                     sched_map = {}
-                    for state in venues:
+                    for state in venues_dates:
                         t1, t2, g_n = state
-                        home = venues[state]
-                        date = dates[state]
+                        date, home = venues_dates[state]
                         sched_map[(t1, g_n)] = (t2, home, date)
                         sched_map[(t2, g_n)] = (t1, not home, date)
+                        venues[state] = home
+                        dates[state] = date
+                        
+                    write_output(venues, "Venues")
+                    write_output(dates, "Dates")
                     return sched_map
                     
         return None
@@ -177,7 +162,7 @@ class Scheduler(object):
         while frontier:
             state = frontier.pop()
             statesExplored += 1
-            if statesExplored % 100000 == 0:
+            if statesExplored % 1000 == 0:
                 num_selected = 0
                 for s in state.states[state.selected]:
                     if state.states[state.selected][s] is not None:

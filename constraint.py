@@ -67,7 +67,7 @@ def home_away_num_game_dicts(sk, selected):
     for state in selected:
         tx, ty, gnxy = state
         if (t1 in [tx,ty] or t2 in [tx,ty]) and (selected[state] is not None):
-            home = selected[state]
+            date, home = selected[state]
             if t1 == tx:
                 if t2 == ty:
                     add(num_games, (t1, t2))
@@ -193,4 +193,5 @@ def game_counts(m, team):
         else:
             return None
     return game_counts
+
     
