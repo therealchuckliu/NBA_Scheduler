@@ -28,32 +28,6 @@ def total_games(m, team, opponent):
         return m.REMAINING_CONF_GAMES
     else:
         return m.INTERCONF_GAMES
-        
-def valid_date(m, sk):
-    domains = m.states[m.domains]
-    selected = m.states[m.selected]
-    t1, t2, g_n = sk
-    dateindex = selected[sk]
-    #constraints are:
-    #any game before g_n can't have a date >= g_n
-    #any game after g_n can't have a date <= g_n
-    
-    for state in domains:
-        x1, x2, g_x = state
-        #involves one of the two teams playing but not sk
-        if state is not sk and (t1 in [x1, x2] or t2 in [x1, x2]):
-            if g_x < g_n:
-                #remove all dates >= dateindex
-                domains[state][:] = [x for x in domains[state] if x < dateindex]
-            elif g_x > g_n:
-                #remove all dates <= dateindex
-                domains[state][:] = [x for x in domains[state] if x > dateindex]
-            if len(domains[state]) == 0 and selected[state] is None:
-                return False
-        elif state is sk:
-            domains[state][:] = []
-    
-    return True
     
 def home_away_num_game_dicts(sk, selected):
     t1, t2, gn = sk

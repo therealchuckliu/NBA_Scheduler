@@ -60,3 +60,6 @@ target/
 *.aux
 *.out
 *.synctex.gz
+
+#checkpoints
+.ipynb_checkpoints/

@@ -314,10 +314,5 @@ class Venues(TGBase):
 
         new_obj = domain_class(new_states)
         return new_obj
-
-class Dates(TGBase):
-    def successors(self):
-        return self.successorDomains(Dates, constraint.valid_date)
-    def min_key_helper(self, min_k):
-        return min_k
+        
 

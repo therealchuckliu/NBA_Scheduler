@@ -6,6 +6,7 @@ def main(argv):
     team = ''
     num_games = 82
     sched = scheduler.Scheduler(2015, True, True)
+    sched.set_debug(False)
     new_sched = sched.create_schedule()
     try:
         opts, args = getopt.getopt(argv,"ht:n:",["team=","num_game="])

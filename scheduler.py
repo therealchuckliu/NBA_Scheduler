@@ -92,22 +92,25 @@ def date_ranges(multiplier, team, game_num):
     return dates
 
 
-debug = False
 class Scheduler(object):
     def __init__(self, year, matchups_json = False, venues_dates_json = False):
         self.data = dg.DataGen(year)
         self.matchups_json = matchups_json
         self.venues_dates_json = venues_dates_json
+        self.debug = True
+        
+    def set_debug(self, t):
+        self.debug = t
 
     def create_schedule(self):
-        if debug: print "{}: Starting".format(dg.datetime.datetime.today())
+        if self.debug: print "{}: Starting".format(dg.datetime.datetime.today())
         matchups = None
         initialState = dom.Matchups(None, self.data.league, self.data.game_indices)
         if self.matchups_json:
             matchups = read_output(self.data.league, "Matchups")
         else:
             matchups, matchups_statesExplored = self.DFS(initialState)
-            if debug: print "{}: Matchups, {} states explored, {}".format(dg.datetime.datetime.today(), matchups_statesExplored, matchups is not None)
+            if self.debug: print "{}: Matchups, {} states explored, {}".format(dg.datetime.datetime.today(), matchups_statesExplored, matchups is not None)
 
         if matchups is not None:
             write_output(matchups, "Matchups")
@@ -142,7 +145,7 @@ class Scheduler(object):
                         venues_domains[dk] = [True, False] * ((dom.constraint.total_games(initialState, t, o) + 1)/2)
                 venueState = dom.Venues({initialState.domains: venues_domains, initialState.selected: venues_selected, initialState.master_dates: master_dates})
                 venues_dates, venues_statesExplored = self.DFS(venueState)
-                if debug: print "{}: Venues, {} states explored, {}".format(dg.datetime.datetime.today(), venues_statesExplored, venues_dates is not None)
+                if self.debug: print "{}: Venues, {} states explored, {}".format(dg.datetime.datetime.today(), venues_statesExplored, venues_dates is not None)
 
             if venues_dates is not None:
                 venues = {}
