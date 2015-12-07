@@ -17,7 +17,7 @@ class DataGen:
         #The first date of the NBA season is between Oct 20-30
         start_d = datetime.date(year, 10, org.np.random.randint(20, 30))
         #The last date of the NBA season is between April 10-20
-        end_d = datetime.date(year+1, 4, org.np.random.randint(10, 20))
+        end_d = datetime.date(year+1, 4, org.np.random.randint(20, 30))
         #No game on Christmas Eve
         c_eve = datetime.date(year, 12, 24)
         #No games over All-Star week, choose random week in February

@@ -14,7 +14,7 @@ class OrgEq(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
-        
+
     def __repr__(self):
         return self.name
 
@@ -33,7 +33,7 @@ class Team(OrgEq):
         skip = 5
         for i in range(len(indices))[::skip]:
             slice_len = len(indices[i:i+skip])
-            num_pick = 4 if slice_len == skip else 1
+            num_pick = np.random.choice([3,4,5]) if slice_len == skip else 1
             dates = np.random.choice(indices[i:i+skip], num_pick, replace=False)
             dates.sort()
             self.home_dates += list(dates)
@@ -48,25 +48,25 @@ class Division(OrgEq):
         self.conference = conference
         #teams in division
         self.teams = dict(zip(map(lambda x: x.name, teams), teams))
-        
+
 class Conference(OrgEq):
     def __init__(self, name, divisions = []):
         self.name = name
         #divisions in conference
-        self.divisions = dict(zip(map(lambda x: x.name, divisions), divisions))    
-    
+        self.divisions = dict(zip(map(lambda x: x.name, divisions), divisions))
+
     def get_team(self, name):
         for division in self.divisions.values():
             if name in division.teams:
                 return division.teams[name]
         return None
-        
+
     def teams(self):
         teams = []
         for division in self.divisions.values():
             teams += division.teams.values()
         return teams
-        
+
 class League(OrgEq):
     def __init__(self, conferences = []):
         self.conferences = dict(zip(map(lambda x: x.name, conferences), conferences))
@@ -77,20 +77,20 @@ class League(OrgEq):
             if name in conference.divisions:
                 return conference.divisions[name]
         return None
-    
+
     def get_team(self, name):
         for conference in self.conferences.values():
             for division in conference.divisions.values():
                 if name in division.teams:
                     return division.teams[name]
         return None
-    
+
     def teams(self):
         teams = []
         for conference in self.conferences.values():
             teams += conference.teams()
         return teams
-        
-        
+
+
 
 
