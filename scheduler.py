@@ -230,7 +230,7 @@ class Scheduler(object):
 
 if __name__ == '__main__':
     #The 2 True's correspond to reading in Matches.json and Venues.json so you don't have to recalculate
-    sched = Scheduler(2015,True,True)
+    sched = Scheduler(2015,True,False)
     today = dg.datetime.datetime.today()
     new_sched = sched.create_schedule()
     fin = dg.datetime.datetime.today()
