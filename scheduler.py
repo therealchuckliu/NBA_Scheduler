@@ -214,7 +214,7 @@ class Scheduler(object):
 
     #methods for printing schedules
     def str_schedule(self, schedule, games = 82, teams = []):
-        output = ""
+        output = "Date,Home,Away\n"
         if type(teams) is str:
             teams = [teams]
         for t in (teams if len(teams) > 0 else self.data.league.teams()):
