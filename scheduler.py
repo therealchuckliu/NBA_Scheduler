@@ -77,7 +77,7 @@ def binary_search(A,x,lo=0, hi=None):
 
 
 def date_ranges(multiplier, team, game_num):
-
+    dates = []
     window = 10
     for i in range(multiplier*game_num-window, multiplier*game_num+window+1):
         if i in team.home_dates:
