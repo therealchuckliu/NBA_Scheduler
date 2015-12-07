@@ -11,6 +11,7 @@ import domain as dom
 import datagen as dg
 import json
 import os
+import constraint
 
 def write_output(domains, filename):
     try:
@@ -75,10 +76,10 @@ def binary_search(A,x,lo=0, hi=None):
         return binary_search(A,x,mid+1, hi)
         
     
-def date_ranges(multiplier, team, game_num):
+def date_ranges(multiplier, team, game_num, game_idx):
     window = 10
     dates = []
-    for i in range(multiplier*game_num-window, multiplier*game_num+window+1):
+    for i in range(max(0, multiplier*game_num-window), min(multiplier*game_num+window+1, game_idx)):
         if i in team.home_dates:
             dates.append(i)
     return dates
@@ -124,8 +125,8 @@ class Scheduler(object):
                     dk = (t, o) if t.name < o.name else (o, t)
                     if sk not in venues_selected:
                         venues_selected[sk] = None
-                        dates_true = date_ranges(2, dk[0], g_n)
-                        dates_false = date_ranges(2, dk[1], g_n)
+                        dates_true = date_ranges(2, dk[0], g_n, max(self.data.game_indices))
+                        dates_false = date_ranges(2, dk[1], g_n, max(self.data.game_indices))
                         master_dates[(sk,True)] = dates_true
                         master_dates[(sk,False)] = dates_false
                         venues_domains[dk] = [True, False] * ((dom.constraint.total_games(initialState, t, o) + 1)/2)
@@ -148,7 +149,26 @@ class Scheduler(object):
                         sched_map[(t2, g_n)] = (t1, not home, date)
                         venues[state] = home
                         dates[state] = date
-                        
+                    
+                    #sanity check that everything is right
+                    for team in self.data.league.teams():
+                        date = -20
+                        opponent_venue = {}
+                        for i in range(1, 83):
+                            opponent, t_f, d = sched_map[(team, i)]
+                            if date >= d:
+                                print "invalid date. game {} has date {}, game {} has date {}".format(i-1, date, i, d)
+                            date = d
+                            key = (opponent, t_f)
+                            constraint.add(opponent_venue, key)
+                        for opponent in self.data.league.teams():
+                            if opponent is not team:
+                                if opponent_venue[(opponent, True)] < (constraint.total_games(initialState, team, opponent))/2:
+                                    print "not enough home games"
+                                if opponent_venue[(opponent, False)] < (constraint.total_games(initialState, team, opponent))/2:
+                                    print "not enough away games"
+                                if opponent_venue[(opponent, True)] + opponent_venue[(opponent, False)] != constraint.total_games(initialState, team, opponent):
+                                    print "not enough games"
                     write_output(venues, "Venues")
                     write_output(dates, "Dates")
                     return sched_map
@@ -161,6 +181,17 @@ class Scheduler(object):
         
         while frontier:
             state = frontier.pop()
+            '''
+            selected_games = {}
+            print "-------"
+            print max(self.data.game_indices)
+            for sk in state.states[state.selected]:
+                if state.states[state.selected][sk] is not None:
+                    selected_games[sk] = state.states[state.selected][sk]
+            for sk in sorted(selected_games, key=lambda x: x[2]):
+                print "{}:{}".format(sk, selected_games[sk])
+            print "-------"
+            '''
             statesExplored += 1
             if statesExplored % 1000 == 0:
                 num_selected = 0
