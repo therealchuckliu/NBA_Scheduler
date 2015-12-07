@@ -30,26 +30,33 @@ def map2list(m):
     l = []
     for k,v in m.iteritems():
         new_k = []
-        new_v = v.name if type(v) is dg.org.Team else v
-        for t in k:
-            if type(t) is dg.org.Team:
-                new_k.append(t.name)
-            else:
-                new_k.append(t)
-        l.append({'key':new_k, 'value': new_v})
+        new_v = v.name if type(v) is dg.org.Team else (str(v) if type(v) is dg.datetime.date else v)
+        if type(k) is int:
+            l.append({'key':k, 'value':new_v})
+        else:
+            for t in k:
+                if type(t) is dg.org.Team:
+                    new_k.append(t.name)
+                else:
+                    new_k.append(t)
+            l.append({'key':new_k, 'value': new_v})
     return l
 
 def list2map(league, l):
     m = {}
     for kv in l:
-        new_k = []
         new_v = league.get_team(kv['value']) if type(kv['value']) is unicode else kv['value']
-        for t in kv['key']:
-            if type(t) is unicode:
-                new_k.append(league.get_team(t))
-            else:
-                new_k.append(t)
-        m[tuple(new_k)] = new_v
+        if new_v is None: new_v = kv['value']
+        if type(kv['key']) is list:
+            new_k = []
+            for t in kv['key']:
+                if type(t) is unicode:
+                    new_k.append(league.get_team(t))
+                else:
+                    new_k.append(t)
+            m[tuple(new_k)] = new_v
+        else:
+            m[kv['key']] = new_v
     return m
 
 def binary_search(A,x,lo=0, hi=None):
@@ -84,22 +91,23 @@ def date_ranges(multiplier, team, game_num):
             dates.append(i)
     return dates
 
-class Scheduler(object):
 
+debug = False
+class Scheduler(object):
     def __init__(self, year, matchups_json = False, venues_dates_json = False):
         self.data = dg.DataGen(year)
         self.matchups_json = matchups_json
         self.venues_dates_json = venues_dates_json
 
     def create_schedule(self):
-        print "{}: Starting".format(dg.datetime.datetime.today())
+        if debug: print "{}: Starting".format(dg.datetime.datetime.today())
         matchups = None
         initialState = dom.Matchups(None, self.data.league, self.data.game_indices)
         if self.matchups_json:
             matchups = read_output(self.data.league, "Matchups")
         else:
             matchups, matchups_statesExplored = self.DFS(initialState)
-            print "{}: Matchups, {} states explored, {}".format(dg.datetime.datetime.today(), matchups_statesExplored, matchups is not None)
+            if debug: print "{}: Matchups, {} states explored, {}".format(dg.datetime.datetime.today(), matchups_statesExplored, matchups is not None)
 
         if matchups is not None:
             write_output(matchups, "Matchups")
@@ -110,8 +118,10 @@ class Scheduler(object):
             #also team1 < team2 alphabetically
             venues_dates = None
             if self.venues_dates_json:
+                venues_dates = {}
                 venues = read_output(self.data.league, "Venues")
                 dates = read_output(self.data.league, "Dates")
+                self.data.game_indices = read_output(self.data.league, "I2D")
                 for state in venues:
                     venues_dates[state] = (dates[state], venues[state])
             else:
@@ -132,45 +142,46 @@ class Scheduler(object):
                         venues_domains[dk] = [True, False] * ((dom.constraint.total_games(initialState, t, o) + 1)/2)
                 venueState = dom.Venues({initialState.domains: venues_domains, initialState.selected: venues_selected, initialState.master_dates: master_dates})
                 venues_dates, venues_statesExplored = self.DFS(venueState)
-                print "{}: Venues, {} states explored, {}".format(dg.datetime.datetime.today(), venues_statesExplored, venues_dates is not None)
+                if debug: print "{}: Venues, {} states explored, {}".format(dg.datetime.datetime.today(), venues_statesExplored, venues_dates is not None)
 
-                if venues_dates is not None:
-                    venues = {}
-                    dates = {}
-                    #write_output(venu, "Dates")
-                    #create a master map of everything of the form:
-                    #(team, game_num) -> (opponent, home, dateindex)
-                    #where home is true if played at team's venue
-                    sched_map = {}
-                    for state in venues_dates:
-                        t1, t2, g_n = state
-                        date, home = venues_dates[state]
-                        sched_map[(t1, g_n)] = (t2, home, date)
-                        sched_map[(t2, g_n)] = (t1, not home, date)
-                        venues[state] = home
-                        dates[state] = date
-                    #sanity check that everything is right
-                    for team in self.data.league.teams():
-                        date = -20
-                        opponent_venue = {}
-                        for i in range(1, 83):
-                            opponent, t_f, d = sched_map[(team, i)]
-                            if date >= d:
-                                print "invalid date. game {} has date {}, game {} has date {}".format(i-1, date, i, d)
-                            date = d
-                            key = (opponent, t_f)
-                            constraint.add(opponent_venue, key)
-                        for opponent in self.data.league.teams():
-                            if opponent is not team:
-                                if opponent_venue[(opponent, True)] < (constraint.total_games(initialState, team, opponent))/2:
-                                    print "not enough home games"
-                                if opponent_venue[(opponent, False)] < (constraint.total_games(initialState, team, opponent))/2:
-                                    print "not enough away games"
-                                if opponent_venue[(opponent, True)] + opponent_venue[(opponent, False)] != constraint.total_games(initialState, team, opponent):
-                                    print "not enough games"
-                    write_output(venues, "Venues")
-                    write_output(dates, "Dates")
-                    return sched_map
+            if venues_dates is not None:
+                venues = {}
+                dates = {}
+                #write_output(venu, "Dates")
+                #create a master map of everything of the form:
+                #(team, game_num) -> (opponent, home, dateindex)
+                #where home is true if played at team's venue
+                sched_map = {}
+                for state in venues_dates:
+                    t1, t2, g_n = state
+                    date, home = venues_dates[state]
+                    sched_map[(t1, g_n)] = (t2, home, date)
+                    sched_map[(t2, g_n)] = (t1, not home, date)
+                    venues[state] = home
+                    dates[state] = date
+                #sanity check that everything is right
+                for team in self.data.league.teams():
+                    date = -20
+                    opponent_venue = {}
+                    for i in range(1, 83):
+                        opponent, t_f, d = sched_map[(team, i)]
+                        if date >= d:
+                            print "invalid date. game {} has date {}, game {} has date {}".format(i-1, date, i, d)
+                        date = d
+                        key = (opponent, t_f)
+                        constraint.add(opponent_venue, key)
+                    for opponent in self.data.league.teams():
+                        if opponent is not team:
+                            if opponent_venue[(opponent, True)] < (constraint.total_games(initialState, team, opponent))/2:
+                                print "not enough home games"
+                            if opponent_venue[(opponent, False)] < (constraint.total_games(initialState, team, opponent))/2:
+                                print "not enough away games"
+                            if opponent_venue[(opponent, True)] + opponent_venue[(opponent, False)] != constraint.total_games(initialState, team, opponent):
+                                print "not enough games"
+                write_output(venues, "Venues")
+                write_output(dates, "Dates")
+                write_output(self.data.i2d, "I2D")
+                return sched_map
 
         return None
 
@@ -219,7 +230,7 @@ class Scheduler(object):
 
 if __name__ == '__main__':
     #The 2 True's correspond to reading in Matches.json and Venues.json so you don't have to recalculate
-    sched = Scheduler(2015,True,False)
+    sched = Scheduler(2015,True,True)
     today = dg.datetime.datetime.today()
     new_sched = sched.create_schedule()
     fin = dg.datetime.datetime.today()

@@ -33,7 +33,7 @@ class Team(OrgEq):
         skip = 5
         for i in range(len(indices))[::skip]:
             slice_len = len(indices[i:i+skip])
-            num_pick = np.random.choice([3,4,5]) if slice_len == skip else 1
+            num_pick = np.random.choice([3,4,5]) if slice_len == skip else slice_len
             dates = np.random.choice(indices[i:i+skip], num_pick, replace=False)
             dates.sort()
             self.home_dates += list(dates)
