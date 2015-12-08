@@ -1,7 +1,0 @@
-**Would not work in my latex. Hence insert before submitting report**
-	\section{Resources}
-	\begin{itemize}
-		\item \url{http://www.public.asu.edu/~huanliu/AI04S/project1.htm}
-		\item \url{http://www.cc.gatech.edu/~bdilkina/papers/NFLsched1.pdf}
-		\item \url{http://www.sloansportsconference.com/wp-content/uploads/2015/02/SSAC15-RP-Finalist-Alleviating-competitive-imbalance-in-NFL-schedules.pdf}
-	\end{itemize}
