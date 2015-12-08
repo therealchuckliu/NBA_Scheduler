@@ -12,6 +12,7 @@ import datagen as dg
 import json
 import os
 import constraint
+import heapq as Q
 
 def write_output(domains, filename):
     try:
@@ -98,7 +99,7 @@ class Scheduler(object):
         self.matchups_json = matchups_json
         self.venues_dates_json = venues_dates_json
         self.debug = True
-        
+
     def set_debug(self, t):
         self.debug = t
 
@@ -128,6 +129,12 @@ class Scheduler(object):
                 for state in venues:
                     venues_dates[state] = (dates[state], venues[state])
             else:
+                #dictionary: keys are teams, values are lists of dates that have been assigned
+                taken_dates = {}
+                num_date_blocks = {}
+                for team in self.data.league.teams():
+                    taken_dates[team] = []
+                    num_date_blocks[team] = 1
                 venues_domains = {}
                 venues_selected = {}
                 master_dates = {}
@@ -143,7 +150,9 @@ class Scheduler(object):
                         master_dates[(sk,True)] = dates_true
                         master_dates[(sk,False)] = dates_false
                         venues_domains[dk] = [True, False] * ((dom.constraint.total_games(initialState, t, o) + 1)/2)
-                venueState = dom.Venues({initialState.domains: venues_domains, initialState.selected: venues_selected, initialState.master_dates: master_dates})
+                venueState = dom.Venues({initialState.domains: venues_domains, initialState.selected: venues_selected,\
+                                         initialState.master_dates: master_dates, initialState.taken_dates: taken_dates, initialState.num_date_blocks: num_date_blocks}, None, None, self.data.game_indices[-1])
+                #venues_dates, venues_statesExplored = self.A_STAR(venueState)
                 venues_dates, venues_statesExplored = self.DFS(venueState)
                 if self.debug: print "{}: Venues, {} states explored, {}".format(dg.datetime.datetime.today(), venues_statesExplored, venues_dates is not None)
 
@@ -194,10 +203,6 @@ class Scheduler(object):
 
         while frontier:
             state = frontier.pop()
-            current_selected = []
-            for (k,v) in state.states[state.selected].items():
-                if v is not None:
-                    current_selected.append((k,v))
             statesExplored += 1
             if statesExplored % 1000 == 0:
                 num_selected = 0
@@ -213,6 +218,99 @@ class Scheduler(object):
                 if successors is not None:
                     frontier.extend(successors)
         return (None, statesExplored)
+
+    def A_STAR(self, initialState):
+        # Adapted from http://www.redblobgames.com/pathfinding/a-star/introduction.html
+        frontier = []
+        Q.heapify(frontier)
+
+        statesExplored = 0
+        # the key is a tuple of the items in state.states[state.selected]
+        # the value is the total cost at that assignment
+        state_cost = {}
+
+        # get the key to represent the state in the dictionary
+        selected_list = []
+        for assignment in initialState.states[initialState.selected].items():
+            if assignment[1] is not None:
+                selected_list.append(assignment)
+        #selected_list.sort()
+        key = tuple(selected_list)
+
+        # Initialize
+        state_cost[key] = initialState.states[initialState.current_cost]
+        priority = state_cost[key] + self.heuristic(initialState)
+        Q.heappush(frontier, (priority, initialState))
+
+        while len(frontier) > 0:
+            #print "n_smallest: {}".format(Q.nsmallest(5, frontier))
+            #print "*"*30
+            #print "frontier[0]: {}".format(frontier[0][0])
+            state_priority, state = Q.heappop(frontier)
+
+            print "priority: {}".format(state_priority)
+            print "cost to state: {}".format(state.states[state.current_cost])
+            print "#" * 30
+            current_selected = []
+            selected_dates = []
+            for s in state.states[state.selected]:
+                    if state.states[state.selected][s] is not None:
+                        current_selected.append((s,state.states[state.selected][s]))
+                        selected_dates.append(state.states[state.selected][s][0])
+            selected_dates.sort()
+            print "Number assigned: {}".format(len(selected_dates))
+            #print "assigned: {}".format(current_selected)
+            #print "dates: {}".format(selected_dates)
+
+
+            #print "old priority: {}".format(state_priority)
+            #print "state_priority: {}".format(state_priority)
+            statesExplored += 1
+            if statesExplored % 100 == 0:
+                num_selected = 0
+                for s in state.states[state.selected]:
+                    if state.states[state.selected][s] is not None:
+                        num_selected += 1
+                print "{}: {}, {}, {}, {}".format(dg.datetime.datetime.today(), statesExplored, len(frontier), num_selected, state_priority)
+
+            if state.complete():
+                # all dates have been assigned
+                return (state.states[state.selected], statesExplored)
+            else:
+                successors = state.successors()
+                if successors is not None and len(successors) != 0:
+                    for successor in successors:
+                        selected_list = []
+                        for assignment in successor.states[state.selected].items():
+                            if assignment[1] is not None:
+                                selected_list.append(assignment)
+                        #selected_list.sort()
+                        key = tuple(selected_list)
+
+                        cost = successor.states[successor.current_cost]
+                        # add successor state to priority queue if cost < previous cost to that state
+                        if key not in state_cost or cost < state_cost[key]:
+                            state_cost[key] = cost
+                            priority = cost + self.heuristic(successor)
+                            #print "new priority: {}".format(priority)
+                            Q.heappush(frontier, (priority, successor))
+                #else:
+                    #print "No successors.  Priority: {}".format(state_priority)
+        return (None, statesExplored)
+
+    def heuristic(self,state):
+        # returns a heuristic for the cost from the current state to a complete assignment
+        # the heuristic is cost of 10 for each unassigned matchup
+        # number of unassigned games / number of date blocks
+        # number o
+        max_dist = 0
+        for team in self.data.league.teams():
+            team_taken_dates = state.states[state.taken_dates][team]
+            #dist_to_goal = (82 - len(team_taken_dates)) / float(state.states[state.num_date_blocks][team])
+            dist_to_goal = (self.data.game_indices[-1] - len(team_taken_dates)) / float((82 - len(team_taken_dates)))
+            if dist_to_goal > max_dist:
+                max_dist = dist_to_goal
+        return max_dist
 
 
     #methods for printing schedules

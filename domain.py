@@ -12,7 +12,7 @@ import constraint
 import random
 
 class TGBase(object):
-    def __init__(self, states = None, league = None, all_dates = None, master_dates = None):
+    def __init__(self, states = None, league = None, all_dates = None, last_date = None):
         self.DIVISIONAL_GAMES = 4
         self.CONF_OPPONENTS_GAMES = 4
         self.REMAINING_CONF_GAMES = 3
@@ -22,6 +22,12 @@ class TGBase(object):
         self.domains = "domains"
         self.selected = "selected"
         self.master_dates = "master_dates"
+        self.taken_dates = 'taken_dates'
+        self.num_date_blocks = 'num_date_blocks'
+        self.current_cost = 'current_cost'
+        self.states[self.current_cost] = 0
+        if last_date is not None:
+            self.last_date = last_date
         if len(self.states) == 0:
             domains = {}
             selected = {}
@@ -37,9 +43,6 @@ class TGBase(object):
                     selected[(team, i)] = None
             self.states[self.domains] = domains
             self.states[self.selected] = selected
-
-        if master_dates is not None:
-            self.selected[self.master_dates] = master_dates
 
 
     def min_key(self):
@@ -66,12 +69,16 @@ class TGBase(object):
             added_elems = set()
             for dom_elem in self.ordered_domain(dk, sk):
                 if dom_elem not in added_elems:
+
                     new_obj = self.copy_states(domain_class, dk, sk, dom_elem)
                     if constraint_func(new_obj, sk):
                         domains.append(new_obj)
                     added_elems.add(dom_elem)
             return domains
         return None
+    def cost(self, dk, sk, dom_elem):
+        # Returns the cost of assigning dom_elem to sk
+        return 0
 
     def ordered_domain(self, dk, sk):
         return self.states[self.domains][dk]
@@ -98,13 +105,19 @@ class TGBase(object):
         domains = {}
         selected = {}
         master_dates = {}
+        taken_dates = {}
+        num_date_blocks = {}
         for k in self.states[self.domains]:
             domains[k] = self.states[self.domains][k][:]
         for k in self.states[self.selected]:
             selected[k] = self.states[self.selected][k][:] if self.states[self.selected][k] is not None else None
         for k in self.states[self.master_dates]:
             master_dates[k] = self.states[self.master_dates][k][:]
-        return {self.domains:domains, self.selected:selected, self.master_dates:master_dates}
+        for k in self.states[self.taken_dates]:
+            taken_dates[k] = self.states[self.taken_dates][k][:]
+        for k in self.states[self.num_date_blocks]:
+            num_date_blocks[k] = self.states[self.num_date_blocks][k]
+        return {self.domains:domains, self.selected:selected, self.master_dates:master_dates, self.taken_dates:taken_dates, self.num_date_blocks: num_date_blocks, self.current_cost: self.states[self.current_cost]}
 
 class Matchups(TGBase):
     def successors(self):
@@ -295,11 +308,14 @@ class Venues(TGBase):
 
     def copy_states(self, domain_class, dk, sk, dom_elem):
         date, t_f = dom_elem
+        t, o, g_n = sk
         new_states = self.copy()
         new_states[self.domains][dk].remove(t_f)
         new_states[self.selected][sk] = dom_elem
+        for team in [t,o]:
+            new_states[self.taken_dates][team].append(date)
+            self.update_date_blocks(new_states,team,date)
         #pruning master dates
-        t, o, g_n = sk
         new_states[self.master_dates][(sk, t_f)][:] = [date]
         new_states[self.master_dates][(sk, not t_f)][:] = []
         for selected_state in self.states[self.selected]:
@@ -311,8 +327,58 @@ class Venues(TGBase):
                 if g_nx > g_n:
                     new_states[self.master_dates][(selected_state, True)][:] = [d for d in new_states[self.master_dates][(selected_state, True)] if d > date]
                     new_states[self.master_dates][(selected_state, False)][:] = [d for d in new_states[self.master_dates][(selected_state, False)] if d > date]
-
+        added_cost = self.cost(dk,sk,dom_elem)
+        #new_states[self.current_cost] = self.states[self.current_cost] + added_cost
+        new_states[self.current_cost] = added_cost
+        #print new_states[self.current_cost]
         new_obj = domain_class(new_states)
+        # update cost
+
         return new_obj
-        
+
+    def cost(self, dk, sk, dom_elem):
+        # Returns the cost of assigning dom_elem to sk
+        # Idea:
+        # Next assignment: (t,o,g_n) --> (date, t_f)
+        t, o, g_n = sk
+        date, t_f = dom_elem
+        # we assign determine cost based on sum of (maximum number of games (m) in n consecutive nights for each team)
+        n = 5
+        # number of assignments that have already been made
+        num_selected = 0
+        # Cost Function:
+        # Keys are 5-day window start date, values are counts
+        o_num_games_in_n_nights = {}
+        t_num_games_in_n_nights = {}
+        min_window_start = max(0, date - (n - 1))
+        max_window_start = date + n - 1
+        for window_start in range(min_window_start, max_window_start + 1):
+            t_num_games_in_n_nights[window_start] = 0
+            o_num_games_in_n_nights[window_start] = 0
+        # Iterate over all assigned dates, and count the number of games
+        # o and t play in each n day window containing date
+        for matchup in self.states[self.selected]:
+            if self.states[self.selected][matchup] is not None:
+                num_selected += 1
+                tx,ox,g_nx = matchup
+                datex, t_fx = self.states[self.selected][matchup]
+                # Check if in date range
+                if datex >= min_window_start and datex <= max_window_start:
+                    # Check if t or o are in the game
+                    if tx is t or ox is t:
+                        t_num_games_in_n_nights[datex] += 1
+                    elif tx is o or ox is o:
+                        o_num_games_in_n_nights[datex] += 1
+        added_cost = max([max(t_num_games_in_n_nights.values()),max(o_num_games_in_n_nights.values())])
+        #print "added_cost: {}".format(added_cost)
+        return added_cost
+
+    def update_date_blocks(self, new_states,team, date):
+        team_taken_dates = new_states[self.taken_dates][team]
+        for assigned_date in team_taken_dates:
+            if abs(assigned_date - date) <= 1:
+                return
+        if date != 0 and date != self.last_date:
+            new_states[self.num_date_blocks][team] += 1
+
 
