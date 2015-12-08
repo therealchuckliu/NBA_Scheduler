@@ -25,7 +25,8 @@ class TGBase(object):
         self.taken_dates = 'taken_dates'
         self.num_date_blocks = 'num_date_blocks'
         self.current_cost = 'current_cost'
-        self.states[self.current_cost] = 0
+        if self.current_cost not in self.states:
+            self.states[self.current_cost] = 1230
         if last_date is not None:
             self.last_date = last_date
         if len(self.states) == 0:
@@ -327,9 +328,10 @@ class Venues(TGBase):
                 if g_nx > g_n:
                     new_states[self.master_dates][(selected_state, True)][:] = [d for d in new_states[self.master_dates][(selected_state, True)] if d > date]
                     new_states[self.master_dates][(selected_state, False)][:] = [d for d in new_states[self.master_dates][(selected_state, False)] if d > date]
-        added_cost = self.cost(dk,sk,dom_elem)
+
         #new_states[self.current_cost] = self.states[self.current_cost] + added_cost
-        new_states[self.current_cost] = added_cost
+        new_states[self.current_cost] = self.cost(dk, sk, dom_elem)
+
         #print new_states[self.current_cost]
         new_obj = domain_class(new_states)
         # update cost
@@ -343,6 +345,7 @@ class Venues(TGBase):
         t, o, g_n = sk
         date, t_f = dom_elem
         # we assign determine cost based on sum of (maximum number of games (m) in n consecutive nights for each team)
+        m = 4
         n = 5
         # number of assignments that have already been made
         num_selected = 0
@@ -369,9 +372,13 @@ class Venues(TGBase):
                         t_num_games_in_n_nights[datex] += 1
                     elif tx is o or ox is o:
                         o_num_games_in_n_nights[datex] += 1
-        added_cost = max([max(t_num_games_in_n_nights.values()),max(o_num_games_in_n_nights.values())])
-        #print "added_cost: {}".format(added_cost)
-        return added_cost
+        max_games_in_n_nights = max([max(t_num_games_in_n_nights.values()),max(o_num_games_in_n_nights.values())])
+        total_games = len(self.states[self.selected])
+        current_cost = total_games - num_selected
+        if max_games_in_n_nights > m:
+            return current_cost + float('inf')
+        else:
+            return current_cost
 
     def update_date_blocks(self, new_states,team, date):
         team_taken_dates = new_states[self.taken_dates][team]

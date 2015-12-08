@@ -152,7 +152,7 @@ class Scheduler(object):
                         venues_domains[dk] = [True, False] * ((dom.constraint.total_games(initialState, t, o) + 1)/2)
                 venueState = dom.Venues({initialState.domains: venues_domains, initialState.selected: venues_selected,\
                                          initialState.master_dates: master_dates, initialState.taken_dates: taken_dates, initialState.num_date_blocks: num_date_blocks}, None, None, self.data.game_indices[-1])
-                #venues_dates, venues_statesExplored = self.A_STAR(venueState)
+                venues_dates, venues_statesExplored = self.A_STAR(venueState)
                 venues_dates, venues_statesExplored = self.DFS(venueState)
                 if self.debug: print "{}: Venues, {} states explored, {}".format(dg.datetime.datetime.today(), venues_statesExplored, venues_dates is not None)
 
@@ -238,7 +238,7 @@ class Scheduler(object):
         key = tuple(selected_list)
 
         # Initialize
-        state_cost[key] = initialState.states[initialState.current_cost]
+        state_cost[key] = 82
         priority = state_cost[key] + self.heuristic(initialState)
         Q.heappush(frontier, (priority, initialState))
 
@@ -248,17 +248,17 @@ class Scheduler(object):
             #print "frontier[0]: {}".format(frontier[0][0])
             state_priority, state = Q.heappop(frontier)
 
-            print "priority: {}".format(state_priority)
-            print "cost to state: {}".format(state.states[state.current_cost])
-            print "#" * 30
-            current_selected = []
-            selected_dates = []
-            for s in state.states[state.selected]:
-                    if state.states[state.selected][s] is not None:
-                        current_selected.append((s,state.states[state.selected][s]))
-                        selected_dates.append(state.states[state.selected][s][0])
-            selected_dates.sort()
-            print "Number assigned: {}".format(len(selected_dates))
+            #print "priority: {}".format(state_priority)
+            #print "cost to state: {}".format(state.states[state.current_cost])
+            #print "#" * 30
+            #current_selected = []
+            #selected_dates = []
+            #for s in state.states[state.selected]:
+            #        if state.states[state.selected][s] is not None:
+            #            current_selected.append((s,state.states[state.selected][s]))
+            #            selected_dates.append(state.states[state.selected][s][0])
+            #selected_dates.sort()
+            #print "Number assigned: {}".format(len(selected_dates))
             #print "assigned: {}".format(current_selected)
             #print "dates: {}".format(selected_dates)
 
@@ -303,6 +303,7 @@ class Scheduler(object):
         # the heuristic is cost of 10 for each unassigned matchup
         # number of unassigned games / number of date blocks
         # number o
+        '''
         max_dist = 0
         for team in self.data.league.teams():
             team_taken_dates = state.states[state.taken_dates][team]
@@ -311,6 +312,8 @@ class Scheduler(object):
             if dist_to_goal > max_dist:
                 max_dist = dist_to_goal
         return max_dist
+        '''
+        return 0
 
 
     #methods for printing schedules
