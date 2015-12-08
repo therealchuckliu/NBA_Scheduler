@@ -297,6 +297,7 @@ class Venues(TGBase):
             else:
                 dates = [false_dates[false_index]] + dates
                 dates = [true_dates[true_index]] + dates
+
         return dates
 
     def domain_dates(self, t_f, sk, sort = False):
@@ -332,7 +333,6 @@ class Venues(TGBase):
         #new_states[self.current_cost] = self.states[self.current_cost] + added_cost
         new_states[self.current_cost] = self.cost(dk, sk, dom_elem)
 
-        #print new_states[self.current_cost]
         new_obj = domain_class(new_states)
         # update cost
 
@@ -374,8 +374,8 @@ class Venues(TGBase):
                         o_num_games_in_n_nights[datex] += 1
         max_games_in_n_nights = max([max(t_num_games_in_n_nights.values()),max(o_num_games_in_n_nights.values())])
         total_games = len(self.states[self.selected])
-        current_cost = total_games - num_selected
-        if max_games_in_n_nights > m:
+        current_cost = total_games - num_selected + abs(date - (g_n-1)*2)
+        if max_games_in_n_nights >= m:
             return current_cost + float('inf')
         else:
             return current_cost

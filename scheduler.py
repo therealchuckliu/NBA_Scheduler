@@ -153,7 +153,7 @@ class Scheduler(object):
                 venueState = dom.Venues({initialState.domains: venues_domains, initialState.selected: venues_selected,\
                                          initialState.master_dates: master_dates, initialState.taken_dates: taken_dates, initialState.num_date_blocks: num_date_blocks}, None, None, self.data.game_indices[-1])
                 venues_dates, venues_statesExplored = self.A_STAR(venueState)
-                venues_dates, venues_statesExplored = self.DFS(venueState)
+                #venues_dates, venues_statesExplored = self.DFS(venueState)
                 if self.debug: print "{}: Venues, {} states explored, {}".format(dg.datetime.datetime.today(), venues_statesExplored, venues_dates is not None)
 
             if venues_dates is not None:
@@ -251,13 +251,13 @@ class Scheduler(object):
             #print "priority: {}".format(state_priority)
             #print "cost to state: {}".format(state.states[state.current_cost])
             #print "#" * 30
-            #current_selected = []
-            #selected_dates = []
-            #for s in state.states[state.selected]:
-            #        if state.states[state.selected][s] is not None:
-            #            current_selected.append((s,state.states[state.selected][s]))
-            #            selected_dates.append(state.states[state.selected][s][0])
-            #selected_dates.sort()
+            current_selected = []
+            selected_dates = []
+            for s in state.states[state.selected]:
+                    if state.states[state.selected][s] is not None:
+                        current_selected.append((s,state.states[state.selected][s]))
+                        selected_dates.append(state.states[state.selected][s][0])
+            selected_dates.sort()
             #print "Number assigned: {}".format(len(selected_dates))
             #print "assigned: {}".format(current_selected)
             #print "dates: {}".format(selected_dates)
@@ -291,6 +291,7 @@ class Scheduler(object):
                         # add successor state to priority queue if cost < previous cost to that state
                         if key not in state_cost or cost < state_cost[key]:
                             state_cost[key] = cost
+
                             priority = cost + self.heuristic(successor)
                             #print "new priority: {}".format(priority)
                             Q.heappush(frontier, (priority, successor))
