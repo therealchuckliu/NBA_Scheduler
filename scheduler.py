@@ -146,7 +146,7 @@ class Scheduler(object):
                         venues_domains[dk] = [True, False] * ((dom.constraint.total_games(initialState, t, o) + 1)/2)
                 venueState = dom.Venues({initialState.domains: venues_domains, initialState.selected: venues_selected,\
                                          initialState.master_dates: master_dates})
-                venues_dates, venues_statesExplored = self.A_STAR(venueState)
+                venues_dates, venues_statesExplored = self.DIJKSTRAS(venueState)
                 #venues_dates, venues_statesExplored = self.DFS(venueState)
                 if self.debug: print "{}: Venues, {} states explored, {}".format(dg.datetime.datetime.today(), venues_statesExplored, venues_dates is not None)
 
@@ -213,13 +213,46 @@ class Scheduler(object):
                     frontier.extend(successors)
         return (None, statesExplored)
 
-    def A_STAR(self, initialState):
-        # Adapted from http://www.redblobgames.com/pathfinding/a-star/introduction.html
+    def DIJKSTRAS(self, initialState):
+        '''
+        Dijkstra's algorithm is used to find a schedule that satisfies
+        the m games in n nights constraint.
+        If "Violated m in n rule" in printed before a schedule is returned,
+        then there is no valid schedule that satisfies the m games in n nights.
+        The algorithm works as follow:
+            1. The initial state (where no matchups have been assigned
+                dates or venues), is assigned a cost of 1230 (the number of
+                remaining unassigned matchups)
+            2.  Note: that a successor state is the current state with one more
+                matchup assigned a date and venue.
+                Each successor state is assigned a cost, where the cost is
+                (total number of matchups = 1230) - (number of matchups assigned)
+                + abs((date of new assignment) - ((game number of new assignment)-1)*2)
+
+
+                However if at least one team plays at least m games in n nights,
+                 10000 is added to the cost.
+
+                Note: abs((date of new assignment) - ((game number of new assignment)-1)*2)
+                    is the distance between the assigned date, and the ideal date
+                    (where the ideal date is the (game number - 1) * 2)
+
+
+
+            3. The cost is used as the priority when adding a state to the
+            frontier priority queue.
+
+            Note: This cost function prioritizes schedules that have assign dates closer
+                to the ideal date and schedules that are closer to the goal
+                (i.e. more assigned games).  In addition, it gives very low priority
+                to schedules that break the m games in n nights constraint,
+                only exploring those schedules after exhausting all other options.
+        '''
         frontier = []
         Q.heapify(frontier)
 
         statesExplored = 0
-        # the key is a tuple of the items in state.states[state.selected]
+        # the key is a tuple assigned matchups in the schedule
         # the value is the total cost at that assignment
         state_cost = {}
 
@@ -231,14 +264,15 @@ class Scheduler(object):
         key = tuple(selected_list)
 
         # Initialize
-        state_cost[key] = 82
+        state_cost[key] = initialState.states[initialState.current_cost]
         priority = state_cost[key]
+
         Q.heappush(frontier, (priority, initialState))
 
         while len(frontier) > 0:
             state_priority, state = Q.heappop(frontier)
             if state.states[state.current_cost] > 10000:
-                print "violated m in n rule"
+                print "Violated m in n rule"
             statesExplored += 1
             if statesExplored % 100 == 0:
                 num_selected = 0
@@ -251,17 +285,19 @@ class Scheduler(object):
                 # all dates have been assigned
                 return (state.states[state.selected], statesExplored)
             else:
+                # Get successors
                 successors = state.successors()
                 if successors is not None and len(successors) != 0:
                     for successor in successors:
                         selected_list = []
+                        # Get key for this successor state
                         for assignment in successor.states[state.selected].items():
                             if assignment[1] is not None:
                                 selected_list.append(assignment)
                         key = tuple(selected_list)
-
                         cost = successor.states[successor.current_cost]
-                        # add successor state to priority queue if cost < previous cost to that state
+
+                        # Add successor state to priority queue if cost < previous cost to that state
                         if key not in state_cost or cost < state_cost[key]:
                             state_cost[key] = cost
 
