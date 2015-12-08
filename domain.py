@@ -12,7 +12,7 @@ import constraint
 import random
 
 class TGBase(object):
-    def __init__(self, states = None, league = None, all_dates = None, last_date = None):
+    def __init__(self, states = None, league = None, all_dates = None):
         self.DIVISIONAL_GAMES = 4
         self.CONF_OPPONENTS_GAMES = 4
         self.REMAINING_CONF_GAMES = 3
@@ -22,12 +22,9 @@ class TGBase(object):
         self.domains = "domains"
         self.selected = "selected"
         self.master_dates = "master_dates"
-        self.taken_dates = 'taken_dates'
-        self.num_date_blocks = 'num_date_blocks'
         self.current_cost = 'current_cost'
-        self.states[self.current_cost] = 0
-        if last_date is not None:
-            self.last_date = last_date
+        if self.current_cost not in self.states:
+            self.states[self.current_cost] = 1230
         if len(self.states) == 0:
             domains = {}
             selected = {}
@@ -69,7 +66,6 @@ class TGBase(object):
             added_elems = set()
             for dom_elem in self.ordered_domain(dk, sk):
                 if dom_elem not in added_elems:
-
                     new_obj = self.copy_states(domain_class, dk, sk, dom_elem)
                     if constraint_func(new_obj, sk):
                         domains.append(new_obj)
@@ -113,11 +109,7 @@ class TGBase(object):
             selected[k] = self.states[self.selected][k][:] if self.states[self.selected][k] is not None else None
         for k in self.states[self.master_dates]:
             master_dates[k] = self.states[self.master_dates][k][:]
-        for k in self.states[self.taken_dates]:
-            taken_dates[k] = self.states[self.taken_dates][k][:]
-        for k in self.states[self.num_date_blocks]:
-            num_date_blocks[k] = self.states[self.num_date_blocks][k]
-        return {self.domains:domains, self.selected:selected, self.master_dates:master_dates, self.taken_dates:taken_dates, self.num_date_blocks: num_date_blocks, self.current_cost: self.states[self.current_cost]}
+        return {self.domains:domains, self.selected:selected, self.master_dates:master_dates, self.current_cost: self.states[self.current_cost]}
 
 class Matchups(TGBase):
     def successors(self):
@@ -296,6 +288,7 @@ class Venues(TGBase):
             else:
                 dates = [false_dates[false_index]] + dates
                 dates = [true_dates[true_index]] + dates
+
         return dates
 
     def domain_dates(self, t_f, sk, sort = False):
@@ -312,9 +305,6 @@ class Venues(TGBase):
         new_states = self.copy()
         new_states[self.domains][dk].remove(t_f)
         new_states[self.selected][sk] = dom_elem
-        for team in [t,o]:
-            new_states[self.taken_dates][team].append(date)
-            self.update_date_blocks(new_states,team,date)
         #pruning master dates
         new_states[self.master_dates][(sk, t_f)][:] = [date]
         new_states[self.master_dates][(sk, not t_f)][:] = []
@@ -327,10 +317,10 @@ class Venues(TGBase):
                 if g_nx > g_n:
                     new_states[self.master_dates][(selected_state, True)][:] = [d for d in new_states[self.master_dates][(selected_state, True)] if d > date]
                     new_states[self.master_dates][(selected_state, False)][:] = [d for d in new_states[self.master_dates][(selected_state, False)] if d > date]
-        added_cost = self.cost(dk,sk,dom_elem)
+
         #new_states[self.current_cost] = self.states[self.current_cost] + added_cost
-        new_states[self.current_cost] = added_cost
-        #print new_states[self.current_cost]
+        new_states[self.current_cost] = self.cost(dk, sk, dom_elem)
+
         new_obj = domain_class(new_states)
         # update cost
 
@@ -343,6 +333,7 @@ class Venues(TGBase):
         t, o, g_n = sk
         date, t_f = dom_elem
         # we assign determine cost based on sum of (maximum number of games (m) in n consecutive nights for each team)
+        m = 4
         n = 5
         # number of assignments that have already been made
         num_selected = 0
@@ -369,16 +360,11 @@ class Venues(TGBase):
                         t_num_games_in_n_nights[datex] += 1
                     elif tx is o or ox is o:
                         o_num_games_in_n_nights[datex] += 1
-        added_cost = max([max(t_num_games_in_n_nights.values()),max(o_num_games_in_n_nights.values())])
-        #print "added_cost: {}".format(added_cost)
-        return added_cost
-
-    def update_date_blocks(self, new_states,team, date):
-        team_taken_dates = new_states[self.taken_dates][team]
-        for assigned_date in team_taken_dates:
-            if abs(assigned_date - date) <= 1:
-                return
-        if date != 0 and date != self.last_date:
-            new_states[self.num_date_blocks][team] += 1
-
+        max_games_in_n_nights = max([max(t_num_games_in_n_nights.values()),max(o_num_games_in_n_nights.values())])
+        total_games = len(self.states[self.selected])
+        current_cost = total_games - num_selected + abs(date - (g_n-1)*2)
+        if max_games_in_n_nights >= m:
+            return current_cost + 10000
+        else:
+            return current_cost
 
