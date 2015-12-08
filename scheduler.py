@@ -215,7 +215,7 @@ class Scheduler(object):
 
     def DIJKSTRAS(self, initialState):
         '''
-        Dijkstra's algorithm is used to find a schedule that satisfies
+        Use Dijkstra's algorithm to find a schedule that satisfies
         the m games in n nights constraint.
         If "Violated m in n rule" in printed before a schedule is returned,
         then there is no valid schedule that satisfies the m games in n nights.
