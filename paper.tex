@@ -164,7 +164,7 @@
     \end{enumerate}
     The cost is used as the priority when adding a state to the frontier priority queue. Again, how we generate the home dates for our teams is crucial to determining the runtime of finding a solution (if it exists). If we give every team a home date for every day of the season, our UCS runs exactly as our previous DFS as every game will be assigned essentially the ideal date. The UCS will explore exactly the same states, but will take a bit longer to run given the added computation of calculating the maximum number of games over any $N$-day period - roughly 2 minutes. Sometimes a season is a little under 164 days, so in that case a solution is found in about 2500 states explored. With the random 3-5 days in any 5-day period, if a solution exists without breaking the soft constraint it will find it in approximately the same time, but if no such solution exists it takes an indefinite amount of time to find a solution. We believe having a good heuristic function would help with this, but were unable to come up with an admissible one that helped.
 
-	\section{Repository}
+	\section{Running the Repository}
 	We felt it unnecessary to submit the code to Canvas as there are quite a few files. Our github repository is located at \url{https://github.com/chuckyouliu/NBA_Scheduler}. Basic description of important files:
 
 	\begin{itemize}
@@ -175,10 +175,27 @@
 		\item constraint.py - Functions associated with forward checking, used by classes in domain.py
 		\item scheduler.py - Main class for solving schedule, creates variables/domains that are fed into domain.py
 	\end{itemize}
+	To create a schedule, you can use a command line tool that we've written called write\_schedule. An example command would be:
+	\begin{center}
+		python write\_schedule.py -m True -d True -y 2016
+	\end{center}
+	This would create a schedule for the year 2016. The -d stands for debug, so debug outputs would be shown, and the -m stands for if you'd like to use an already existing Matchups.json file, so only create new home/aways and dates not new matchups. Setting that to False would create an entirely new schedule with new matchups.
 	Our results of an example schedule are stored in the json files. We created a simple command line tool to read from the json files by typing for example:
 	\begin{center}
 		python read\_schedule.py -n 5 -t Knicks,Celtics
 	\end{center}
 	This will output the first 5 games of the schedule for Knicks and Celtics. Use -h to see the list of possible teams.
+
+	\section{Work Distribution}
+	\begin{itemize}
+	\item Data Generation - Charles created the structure of the league as well as the initial data generation class. As the project progressed changes were made by all members.
+	\item ILP - Sam and Abhishek worked on the initial matchups problem. From there, Abhishek took the lead on solving home/away's and dates as well as moving to the faster GUROBI.
+	\item CSP - Charles created the general structure of the scheduler/domain/constraint files and the sub-CSP problems. From there the more involved work (heuristics, testing) were split as follows:
+		\begin{itemize}
+			\item Matchups heuristics - Charles
+			\item Home/Aways heuristics - Charles and Sam pair coded
+			\item Dates/UCS - primarily Sam with some input on cost functions from Charles
+		\end{itemize}
+	\end{itemize}
 	
 \end{document}

@@ -203,7 +203,7 @@ class Scheduler(object):
                 for s in state.states[state.selected]:
                     if state.states[state.selected][s] is not None:
                         num_selected += 1
-                print "{}: {}, {}, {}".format(dg.datetime.datetime.today(), statesExplored, len(frontier), num_selected)
+                print "{}: {} statesExplored, {} frontier length, {} number of assignments".format(dg.datetime.datetime.today(), statesExplored, len(frontier), num_selected)
 
             if state.complete():
                 return (state.states[state.selected], statesExplored)
@@ -279,7 +279,7 @@ class Scheduler(object):
                 for s in state.states[state.selected]:
                     if state.states[state.selected][s] is not None:
                         num_selected += 1
-                print "{}: {}, {}, {}, {}".format(dg.datetime.datetime.today(), statesExplored, len(frontier), num_selected, state_priority)
+                print "{}: {} statesExplored, {} frontier length, {} num assignments, {} state cost".format(dg.datetime.datetime.today(), statesExplored, len(frontier), num_selected, state_priority)
 
             if state.complete():
                 # all dates have been assigned

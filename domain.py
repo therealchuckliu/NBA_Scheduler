@@ -23,8 +23,6 @@ class TGBase(object):
         self.selected = "selected"
         self.master_dates = "master_dates"
         self.current_cost = 'current_cost'
-        if self.current_cost not in self.states:
-            self.states[self.current_cost] = 1230
         if len(self.states) == 0:
             domains = {}
             selected = {}
@@ -40,6 +38,11 @@ class TGBase(object):
                     selected[(team, i)] = None
             self.states[self.domains] = domains
             self.states[self.selected] = selected
+        
+        if self.current_cost not in self.states:
+            self.states[self.current_cost] = 1230
+        if self.master_dates not in self.states:
+            self.states[self.master_dates] = {}
 
 
     def min_key(self):
@@ -101,12 +104,12 @@ class TGBase(object):
         domains = {}
         selected = {}
         master_dates = {}
-        taken_dates = {}
-        num_date_blocks = {}
         for k in self.states[self.domains]:
             domains[k] = self.states[self.domains][k][:]
+
         for k in self.states[self.selected]:
-            selected[k] = self.states[self.selected][k][:] if self.states[self.selected][k] is not None else None
+            selected[k] = self.states[self.selected][k] if self.states[self.selected][k] is not None else None
+            
         for k in self.states[self.master_dates]:
             master_dates[k] = self.states[self.master_dates][k][:]
         return {self.domains:domains, self.selected:selected, self.master_dates:master_dates, self.current_cost: self.states[self.current_cost]}
