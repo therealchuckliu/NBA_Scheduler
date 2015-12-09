@@ -169,6 +169,11 @@ for key in key_list:
         second_team = max(home,away)
         if first_team == home:
             value = True
+        else:
+            value = False
+        match["key"] = [first_team, second_team, date]
+        match["value"] = value
+        Venues.append(match)
 
 Matchup = []
 for key in schedule_dict.keys():
@@ -179,11 +184,7 @@ for key in schedule_dict.keys():
     match["key"] = [team_1,game_date]
     match["value"] = team_2
     Matchup.append(match)
-        else:
-            value = False
-        match["key"] = [first_team, second_team, date]
-        match["value"] = value
-        Venues.append(match)
+        
 
 ##Saving the list to file
 with open('Matchups_ILP.json', 'w') as outfile:
