@@ -170,11 +170,11 @@
 	To satisfy the constraint that each team plays no more than $M$ games in $N$ nights, we assign each state a priority and use Dijkstra's algorithm, instead of DFS, to find a schedule. For our problem, let $M=4$ and $N=5$, meaning that each team plays no more than 3 games in 5 nights.  When the $M$ games in $N$ nights constraint is added to the HSP, the HSP is solved using Dijkstra's algorithm alone, not DFS.
     The HSP was solved using Dijkstra's algorithm in the following way:
     \begin{enumerate}
-    	\item The initial state (where no matchups have been assigned dates or venues), is assigned a cost of 1230 (the number of remaining unassigned matchups).  Here, a successor state is the current state with one more matchup assigned a date and home/away.
+    	\item The initial state (where no matchups have been assigned dates or venues), is assigned a cost of 1230 (the number of remaining unassigned matchups).  Here,  successor state is the current state with one more matchup assigned a date and home/away.
     	\item Each possible successor state is assigned a cost of $Unassigned + Dist$, where $Unassigned$ refers to the number of total matchups remaining to be assigned (should decrease from 1230 by 1 every time) and $Dist$ is the distance to the ideal date for the new matchup assigned (to retain the date ordering from our heuristics)
     	\item If one team of the new matchup assigned plays at least $M$ games in $N$ nights, a penalty 10000 is added to the cost
     \end{enumerate}
-    The cost is used as the priority when adding a state to the frontier priority queue. Again, how we generate the home dates for our teams is crucial to determining the runtime of finding a solution (if it exists). If we give every team a home date for every day of the season, our UCS runs exactly as our previous DFS as every game will be assigned essentially the ideal date. The UCS will explore exactly the same states, but will take a bit longer to run given the added computation of calculating the maximum number of games over any $N$-day period - roughly 2 minutes. Sometimes a season is a little under 164 days, so in that case a solution is found in about 2500 states explored. With the random 3-5 days in any 5-day period, if a solution exists without breaking the soft constraint it will find it in approximately the same time, but if no such solution exists it takes an indefinite amount of time to find a solution. We believe having a good heuristic function would help with this, but were unable to come up with an admissible one that helped.
+    The cost is used as the priority when adding a state to the frontier priority queue. Again, how we generate the home dates for our teams is crucial to determining the runtime of finding a solution (if it exists). If we give every team a home date for every day of the season, Dijkstra's algorithm runs exactly as our previous DFS as every game will be assigned essentially the ideal date. Dijkstra's algorithm will explore exactly the same states, but will take a bit longer to run given the added computation of calculating the maximum number of games over any $N$-day period - roughly 2 minutes. Sometimes a season is a little under 164 days, so in that case a solution is found in about 2500 states explored. With the random 3-5 days in any 5-day period, if a solution exists without breaking the $M$ games in $N$ nights soft constraint it will find it in approximately the same time, but if no such solution exists it takes an indefinite amount of time to find a solution. We believe having a good heuristic function would help with this, but were unable to come up with an admissible one that helped.
 
 	\section{Running the Repository}
 	We felt it unnecessary to submit the code to Canvas as there are quite a few files. Our github repository is located at \url{https://github.com/chuckyouliu/NBA_Scheduler}. Basic description of important files:
@@ -206,7 +206,7 @@
 		\begin{itemize}
 			\item Matchups - Charles
 			\item Home/Aways - Charles and Sam pair coded
-			\item Dates/UCS - primarily Sam with some input on cost functions from Charles
+			\item Dates/$M$ in $N$ - primarily Sam with some input on cost functions from Charles
 		\end{itemize}
 	\end{itemize}
 
