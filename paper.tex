@@ -39,7 +39,7 @@
 		\item 2 games against teams in the opposing conference. [2x15=30 games]
 	\end{enumerate}
 
-	And of course, each team must play 41 home and 41 away games.
+	Each matchup must be split evenly home/away (or as close as possible in the case of 3 game matchups), and of course each team must play 41 home and 41 away games.
 
 	\subsection{Court Availability}
 
@@ -50,6 +50,8 @@
 		\item 4 Mondays
 		\item 4 Thursdays (to help TNT plan its telecasts).
 	\end{enumerate}
+
+	We don't concern ourselves as much with this, we will just randomly generate some set of home dates. More details will follow below.
 
 	\subsection{Official Breaks}
 
@@ -123,12 +125,6 @@
 	\subsection{Matchups CSP}
 	Within our code, for each team we initialize a list of opposing teams with each team repeated the number of times the two teams play. Our $MSP$ then will form the unique list of teams from this list to try assignments.
 
-	\begin{figure}
-	\caption{Example of current state during $MSP$. The number next to the opposing team corresponds to the number of games left to play against the Knicks.
-	min\_count(Knicks)=1 and sum\_count(Knicks, Celtics)=2}
-	\includegraphics[scale=0.6]{matchups_game_counts}
-	\end{figure}
-
 	We define two useful functions for our CSP:
 	\begin{itemize}
 		\item min\_count($Team$) - minimum row count over remaining games
@@ -147,6 +143,12 @@
 	\subsubsection{Results}
 	The CSP solves typically in 2-3 minutes with around 1600 states explored. The heuristic that was the most valuable was the least-constrained variable heuristic, as without it the CSP would not complete.
 
+	\begin{figure}
+	\caption{Example of current state during $MSP$. The number next to the opposing team corresponds to the number of games left to play against the Knicks. As Celtics still have to play Knicks 3 times, this state is inconsistent.
+	min\_count(Knicks)=1 and sum\_count(Knicks, Celtics)=2}
+	\includegraphics[scale=0.6]{matchups_game_counts}
+	\end{figure}
+
 	\subsection{Dates/Venues CSP}
 	Using the results from the Matchups CSP, we formulated this problem first as a DFS again. In our code, for any pair of teams we stored a list of True/False tuples according to the number of times those two teams played. If the teams played three times, there would be two Trues and two Falses. We also created a master list of possible dates with the keys being $(Team_1,Team_2,game\_num,True/False)$. This represented the possible dates for any matchup and home/away combination (True meaning $Team_1$ was home). For the home team, let the set of home dates generated in our initial data generation process be $D$. We defined a hyperparameter $window$ and assigned the values to this dictionary as follows, where $g$ is the game number:
 
@@ -158,9 +160,9 @@
 	\begin{enumerate}
 		\item Forward checking was relatively straightforward in this CSP. We remove any True/False possibilities for any pair of teams if one team has reached the limit of home or away games for that matchup. For any date $d$ we assign for some game number $g$, we remove the dates prior to $d$ for any game after $g$ and any date after $d$ for any game before $g$ for any matchup involving one of these teams.
 		\item Choosing what matchup to next assign was the most perplexing part of this problem. We initially chose the team with the most assignments up to that point - essentially trying to assign all home/away matchups for a specific team at a time. The difficulty in this CSP is finding the right assignments for matchups of teams that play 3 times. There's an added complexity of having the right combination of 1 home/2 away and 2 home/1 away matchups that keep each team's total home/away games even. What was originally happening was the DFS would assign every matchup for every team until the last few, but it was impossible to find a right assignment for them because too many teams had their 3-game matchups with a given 2-home or 2-aways. There wasn't a good backtracking method implemented once that happened, so the CSP would stagnate through all possible iterations. Given that, we decided to first assign all matchups between opponents that play an even number of times and only after all those were completed do we start on the 3-game matchups. This was the key to solving this CSP.
-		\item Once we selected matchup to assign, we checked which values of True or False were possible: that is, which of the two teams could be the home team.  If a team had reached their limit of home games or away games then there is no ordering to be done because there is at most one option. If both teams could potentially be the home team, we chose to first try the team with the fewer number of home games be the potential home team. Then, for any Home/Away assignment, we had our master dates list with potential dates. We ordered these according to the distance to the ``ideal date'',  2*$g$, where $g$ is the game number we had used to first assign the window of possible dates. The resulting list contained possible assignments: alternating True/False assignments with their associated dates ordered by distance to the ``ideal date''.
+		\item Once we selected the matchup to assign, we checked which values of True or False were possible: that is, which of the two teams could be the home team.  If a team had reached their limit of home games or away games then there is no ordering to be done because there is at most one option. If both teams could potentially be the home team, we chose to first try the team with the fewer number of home games be the potential home team. Then, for any Home/Away assignment, we had our master dates list with potential dates. We ordered these according to the distance to the ``ideal date'',  2*$g$, where $g$ is the game number we had used to first assign the window of possible dates. The resulting list contained possible assignments: alternating True/False assignments with their associated dates ordered by distance to the ``ideal date''.
 		\begin{itemize}
-			\item As an example suppose for $(Team_1,Team_2,$g$ =10)$, the window of home dates for $Team_1$ are $(17,19,21,23)$ and the window of home dates for $Team_2$ are $(18,20)$. We want to first try $Team_2$ as the home team because to that point it's had less home assignments, so False would take priority to True. The resulting ordering of the domain would be: (20,False), (19,True), (18,False), (21,True), (23,True), (17,True) - ordering of 19/21 and 17/23 could be flipped based Python's sort implementation.
+			\item As an example suppose for $(Team_1,Team_2,$g$ =10)$, the window of home dates for $Team_1$ are $(17,19,21,23)$ and the window of home dates for $Team_2$ are $(18,20)$. We want to first try $Team_2$ as the home team because to that point it's had less home assignments, so False would take priority to True. The resulting ordering of the domain would be: (20,False), (19,True), (18,False), (21,True), (23,True), (17,True) - ordering of 19/21 and 17/23 could be flipped based on Python's sort implementation.
 		\end{itemize}
 	\end{enumerate}
 
@@ -175,6 +177,18 @@
     	\item If one team of the new matchup assigned plays at least $M$ games in $N$ nights, a penalty 10000 is added to the cost
     \end{enumerate}
     The cost is used as the priority when adding a state to the frontier priority queue. Again, how we generate the home dates for our teams is crucial to determining the runtime of finding a solution (if it exists). If we give every team a home date for every day of the season, Dijkstra's algorithm runs exactly as our previous DFS as every game will be assigned essentially the ideal date. Dijkstra's algorithm will explore exactly the same states, but will take a bit longer to run given the added computation of calculating the maximum number of games over any $N$-day period - roughly 2 minutes. Sometimes a season is a little under 164 days, so in that case a solution is found in about 2500 states explored. With the random 3-5 days in any 5-day period, if a solution exists without breaking the $M$ games in $N$ nights soft constraint it will find it in approximately the same time, but if no such solution exists it takes an indefinite amount of time to find a solution. We believe having a good heuristic function would help with this, but were unable to come up with an admissible one that helped.
+
+    \section{Summary}
+    We approached solving this problem in two different ways - using an ILP solver and writing our own CSP solver. We wanted to see if we could beat the ILP solver - but since switching to GUROBI it would seem to be infeasible using pure Python. However, we could reasonably solve the problem in under 5 minutes if a solution for the dates exists. There's certainly many more areas where we could have explored:
+
+    \begin{itemize}
+    	\item Finding a good heuristic for the $M$ games in $N$ nights constraint. If we could provide this then it should be possible to avoid getting stuck iterating in a BFS-like manner once the constraint gets broken.
+    	\item Extending the model to take into account more realistic scenarios - for example the Lakers and Clippers share a home arena.
+    	\item Adding to the cost function some sense of ``primetime'' games, where teams with a better record or larger market playing in those games get a higher score.
+    	\item Minimizing long road trips.
+    \end{itemize}
+
+    Generally, all of these problems involve playing around with the cost/heuristic function. It was a great experience in terms of using the tools we learned and applying them to a very specific problem - and it shows how knowledge about the problems helps in forming heuristics.
 
 	\section{Running the Repository}
 	We felt it unnecessary to submit the code to Canvas as there are quite a few files. Our github repository is located at \url{https://github.com/chuckyouliu/NBA_Scheduler}. Basic description of important files:
