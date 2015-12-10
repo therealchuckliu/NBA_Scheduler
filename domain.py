@@ -38,7 +38,7 @@ class TGBase(object):
                     selected[(team, i)] = None
             self.states[self.domains] = domains
             self.states[self.selected] = selected
-        
+
         if self.current_cost not in self.states:
             self.states[self.current_cost] = 1230
         if self.master_dates not in self.states:
@@ -109,7 +109,7 @@ class TGBase(object):
 
         for k in self.states[self.selected]:
             selected[k] = self.states[self.selected][k] if self.states[self.selected][k] is not None else None
-            
+
         for k in self.states[self.master_dates]:
             master_dates[k] = self.states[self.master_dates][k][:]
         return {self.domains:domains, self.selected:selected, self.master_dates:master_dates, self.current_cost: self.states[self.current_cost]}
@@ -268,7 +268,6 @@ class Venues(TGBase):
             else:
                 t_first = T_num < F_num
             return self.order_TF(dk, t_first, sk)
-            #return self.order_TF(dk, T_num < F_num, sk)
         else:
             return []
 
